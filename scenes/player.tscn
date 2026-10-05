@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/player/Player.cs" id="1_player"]
+[ext_resource type="Resource" path="res://resources/vehicles/basic_scooter.tres" id="2_stats"]
+[ext_resource type="Script" path="res://scripts/player/BikeVisual.cs" id="3_visual"]
+[ext_resource type="Script" path="res://scripts/player/TargetIndicator.cs" id="4_indicator"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_body"]
+radius = 13.0
+
+[node name="Player" type="CharacterBody2D" groups=["player"]]
+z_index = 5
+collision_mask = 2
+motion_mode = 1
+script = ExtResource("1_player")
+VehicleStats = ExtResource("2_stats")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_body")
+
+[node name="BikeVisual" type="Node2D" parent="."]
+scale = Vector2(1.3, 1.3)
+script = ExtResource("3_visual")
+
+[node name="TargetIndicator" type="Node2D" parent="."]
+top_level = true
+z_index = 20
+script = ExtResource("4_indicator")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position_smoothing_enabled = true
+position_smoothing_speed = 6.0

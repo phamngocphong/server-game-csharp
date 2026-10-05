@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="JobTemplate" format=3]
+
+[ext_resource type="Script" path="res://scripts/jobs/JobTemplate.cs" id="1_tpl"]
+
+[resource]
+script = ExtResource("1_tpl")
+TemplateId = "electronics"
+PackageName = "Fragile Electronics"
+Description = "Long-distance, high-value cargo."
+Color = Color(0.75, 0.5, 1, 1)
+BaseReward = 35.0
+RewardPerKm = 18.0
+RewardVariance = 0.15
+MinDistance = 2800.0
+MaxDistance = 6500.0
+Weight = 1.0

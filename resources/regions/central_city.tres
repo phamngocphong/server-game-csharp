@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CityRegionData" format=3]
+
+[ext_resource type="Script" path="res://scripts/map/CityRegionData.cs" id="1_region"]
+[ext_resource type="Script" path="res://scripts/map/DistrictData.cs" id="2_district"]
+[ext_resource type="Resource" path="res://resources/districts/downtown.tres" id="3_downtown"]
+[ext_resource type="Resource" path="res://resources/districts/old_quarter.tres" id="4_old"]
+[ext_resource type="Resource" path="res://resources/districts/riverside.tres" id="5_river"]
+[ext_resource type="Resource" path="res://resources/districts/industrial.tres" id="6_industrial"]
+
+[resource]
+script = ExtResource("1_region")
+RegionId = "central_city"
+DisplayName = "Central City"
+LayoutSeed = 1337
+GridSize = Vector2i(10, 8)
+BlockSize = 420.0
+RoadWidth = 140.0
+RoadColor = Color(0.22, 0.23, 0.26, 1)
+LaneColor = Color(0.85, 0.8, 0.45, 0.7)
+ParkColor = Color(0.3, 0.55, 0.3, 1)
+Districts = Array[ExtResource("2_district")]([ExtResource("3_downtown"), ExtResource("4_old"), ExtResource("5_river"), ExtResource("6_industrial")])
+HorizontalStreetNames = PackedStringArray("Tran Hung Dao St", "Ly Thuong Kiet St", "Nguyen Trai St", "Le Duan Blvd", "Tran Phu St", "Ba Thang Hai St", "Nguyen Thi Minh Khai St", "Vo Thi Sau St", "Phan Dang Luu St")
+VerticalStreetNames = PackedStringArray("Le Loi Blvd", "Nguyen Hue St", "Hai Ba Trung St", "Pasteur St", "Nam Ky Khoi Nghia St", "Dong Khoi St", "Ham Nghi Ave", "Ton Duc Thang St", "Dien Bien Phu St", "Vo Van Tan St", "Cach Mang Thang Tam St")

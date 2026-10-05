@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/Main.cs" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/city_map.tscn" id="2_map"]
+[ext_resource type="PackedScene" path="res://scenes/player.tscn" id="3_player"]
+[ext_resource type="Script" path="res://scripts/jobs/JobManager.cs" id="4_jobs"]
+[ext_resource type="PackedScene" path="res://scenes/job_marker.tscn" id="5_marker"]
+[ext_resource type="Script" path="res://scripts/jobs/JobTemplate.cs" id="6_template"]
+[ext_resource type="Resource" path="res://resources/jobs/food_delivery.tres" id="7_food"]
+[ext_resource type="Resource" path="res://resources/jobs/documents.tres" id="8_docs"]
+[ext_resource type="Resource" path="res://resources/jobs/parcel.tres" id="9_parcel"]
+[ext_resource type="Resource" path="res://resources/jobs/fragile_electronics.tres" id="10_electronics"]
+[ext_resource type="PackedScene" path="res://ui/hud.tscn" id="11_hud"]
+[ext_resource type="PackedScene" path="res://ui/job_board.tscn" id="12_board"]
+[ext_resource type="PackedScene" path="res://ui/delivery_result_popup.tscn" id="13_popup"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="CityMap" parent="." instance=ExtResource("2_map")]
+
+[node name="Markers" type="Node2D" parent="."]
+
+[node name="Player" parent="." instance=ExtResource("3_player")]
+
+[node name="JobManager" type="Node" parent="." node_paths=PackedStringArray("Map", "MarkersRoot")]
+script = ExtResource("4_jobs")
+Map = NodePath("../CityMap")
+MarkersRoot = NodePath("../Markers")
+MarkerScene = ExtResource("5_marker")
+JobTemplates = Array[ExtResource("6_template")]([ExtResource("7_food"), ExtResource("8_docs"), ExtResource("9_parcel"), ExtResource("10_electronics")])
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="HUD" parent="UI" instance=ExtResource("11_hud")]
+
+[node name="JobBoard" parent="UI" instance=ExtResource("12_board")]
+
+[node name="DeliveryResultPopup" parent="UI" instance=ExtResource("13_popup")]

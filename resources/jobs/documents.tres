@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="JobTemplate" format=3]
+
+[ext_resource type="Script" path="res://scripts/jobs/JobTemplate.cs" id="1_tpl"]
+
+[resource]
+script = ExtResource("1_tpl")
+TemplateId = "documents"
+PackageName = "Documents"
+Description = "Office paperwork across town."
+Color = Color(0.55, 0.75, 1, 1)
+BaseReward = 18.0
+RewardPerKm = 12.0
+RewardVariance = 0.15
+MinDistance = 1200.0
+MaxDistance = 3200.0
+Weight = 2.0

@@ -1,0 +1,56 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/JobEntry.cs" id="1_entry"]
+
+[node name="JobEntry" type="PanelContainer"]
+size_flags_horizontal = 3
+theme_type_variation = &"JobCard"
+script = ExtResource("1_entry")
+
+[node name="HBox" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Info" type="VBoxContainer" parent="HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PackageLabel" type="Label" parent="HBox/Info"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Package"
+
+[node name="RouteLabel" type="Label" parent="HBox/Info"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "From: -
+To: -"
+autowrap_mode = 3
+
+[node name="DetailLabel" type="Label" parent="HBox/Info"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+theme_override_font_sizes/font_size = 13
+text = "Pickup - away  -  Trip -"
+autowrap_mode = 3
+
+[node name="Side" type="VBoxContainer" parent="HBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="RewardLabel" type="Label" parent="HBox/Side"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 1, 0.6, 1)
+theme_override_font_sizes/font_size = 22
+text = "$0"
+horizontal_alignment = 1
+
+[node name="AcceptButton" type="Button" parent="HBox/Side"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Accept"

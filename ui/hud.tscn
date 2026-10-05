@@ -1,0 +1,167 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/Hud.cs" id="1_hud"]
+[ext_resource type="Theme" path="res://resources/ui/ui_theme.tres" id="2_theme"]
+
+[node name="HUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("2_theme")
+script = ExtResource("1_hud")
+
+[node name="WalletPanel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 256.0
+offset_bottom = 120.0
+mouse_filter = 2
+
+[node name="VBox" type="VBoxContainer" parent="WalletPanel"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="BalanceLabel" type="Label" parent="WalletPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 1, 0.6, 1)
+theme_override_font_sizes/font_size = 28
+text = "$0"
+
+[node name="DeliveriesLabel" type="Label" parent="WalletPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Deliveries: 0"
+
+[node name="DistrictLabel" type="Label" parent="WalletPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.5, 1)
+text = "District"
+
+[node name="ActiveJobPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 16.0
+offset_right = 200.0
+offset_bottom = 150.0
+grow_horizontal = 2
+
+[node name="VBox" type="VBoxContainer" parent="ActiveJobPanel"]
+layout_mode = 2
+
+[node name="JobStatusLabel" type="Label" parent="ActiveJobPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "GO TO PICKUP"
+horizontal_alignment = 1
+
+[node name="JobTargetLabel" type="Label" parent="ActiveJobPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Target"
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="JobInfoLabel" type="Label" parent="ActiveJobPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.8, 0.8, 0.85, 1)
+text = "Package - Reward"
+horizontal_alignment = 1
+
+[node name="HBox" type="HBoxContainer" parent="ActiveJobPanel/VBox"]
+layout_mode = 2
+
+[node name="JobDistanceLabel" type="Label" parent="ActiveJobPanel/VBox/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Distance: -"
+
+[node name="CancelButton" type="Button" parent="ActiveJobPanel/VBox/HBox"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "Cancel Job"
+
+[node name="ToastPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 170.0
+offset_right = 200.0
+offset_bottom = 214.0
+grow_horizontal = 2
+mouse_filter = 2
+
+[node name="ToastLabel" type="Label" parent="ToastPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Notification"
+horizontal_alignment = 1
+
+[node name="PromptPanel" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -160.0
+offset_top = -140.0
+offset_right = 160.0
+offset_bottom = -90.0
+grow_horizontal = 2
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="PromptLabel" type="Label" parent="PromptPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.8, 0.4, 1)
+theme_override_font_sizes/font_size = 22
+text = "[E] Interact"
+horizontal_alignment = 1
+
+[node name="SpeedPanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = -96.0
+offset_right = 456.0
+offset_bottom = -16.0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="VBox" type="VBoxContainer" parent="SpeedPanel"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="SpeedLabel" type="Label" parent="SpeedPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "0 km/h"
+
+[node name="ControlsLabel" type="Label" parent="SpeedPanel/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.75, 0.8, 1)
+theme_override_font_sizes/font_size = 13
+text = "WASD drive  |  Space handbrake  |  E interact  |  Tab jobs  |  F5 save"

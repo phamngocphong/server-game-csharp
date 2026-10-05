@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="DistrictData" format=3]
+
+[ext_resource type="Script" path="res://scripts/map/DistrictData.cs" id="1_district"]
+
+[resource]
+script = ExtResource("1_district")
+DistrictId = "riverside"
+DisplayName = "Riverside"
+GridRect = Rect2i(0, 4, 5, 4)
+SidewalkColor = Color(0.58, 0.64, 0.58, 1)
+BuildingColors = PackedColorArray(0.85, 0.85, 0.8, 1, 0.6, 0.75, 0.7, 1, 0.75, 0.7, 0.6, 1)
+ParkChance = 0.3
+MinLots = 2
+MaxLots = 3
+RewardMultiplier = 0.9
