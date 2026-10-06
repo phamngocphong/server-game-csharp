@@ -87,7 +87,7 @@ public partial class JobManager : Node
                 return;
             }
             Bus.EmitSignal(EventBus.SignalName.NotificationRequested,
-                $"Running late! Reward cut by {Mathf.RoundToInt(job.LatePenalty * 100f)}%");
+                $"Running late! Reward cut by {Mathf.RoundToInt(GameManager.Instance.LatePenaltyFor(job) * 100f)}%");
         }
     }
 

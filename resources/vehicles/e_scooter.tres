@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="VehicleStats" format=3]
+
+[ext_resource type="Script" path="res://scripts/player/VehicleStats.cs" id="1_vehicle"]
+
+[resource]
+script = ExtResource("1_vehicle")
+VehicleName = "Electric Scooter"
+ModelId = "e_scooter"
+Description = "Quick off the line and very cheap to run; small battery."
+BodyColor = Color(0.9, 0.9, 0.93, 1)
+MaxSpeed = 540.0
+ReverseMaxSpeed = 160.0
+Acceleration = 520.0
+BrakeDeceleration = 1000.0
+CoastDeceleration = 280.0
+TurnSpeed = 3.2
+Grip = 9.5
+HandbrakeGrip = 2.2
+FuelCapacity = 3.0
+FuelPerKm = 0.035
+IdleFuelPerMinute = 0.0
+PushSpeed = 70.0
+BasePrice = 600
+ShopWeight = 2.0
+MinPerks = 0
+MaxPerks = 2
+PerkWeights = Dictionary[String, float]({"speed": 1.0, "eco": 0.5, "thermal": 1.0, "guard": 1.0, "tank": 2.0})

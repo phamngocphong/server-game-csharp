@@ -5,7 +5,6 @@ namespace ShipperSimulator;
 /// <summary>Procedural top-down motorbike + rider (faces +X). Replace with sprites later.</summary>
 public partial class BikeVisual : Node2D
 {
-    private static readonly Color BodyColor = new(0.85f, 0.2f, 0.2f);
     private static readonly Color TireColor = new(0.08f, 0.08f, 0.08f);
     private static readonly Color JacketColor = new(0.95f, 0.55f, 0.1f);
     private static readonly Color HelmetColor = new(0.95f, 0.95f, 0.95f);
@@ -14,9 +13,35 @@ public partial class BikeVisual : Node2D
     private static readonly Color PassengerShirtColor = new(0.3f, 0.6f, 0.95f);
     private static readonly Color PassengerHelmetColor = new(0.2f, 0.75f, 0.35f);
 
+    private static readonly Color ThermalBoxColor = new(0.82f, 0.85f, 0.9f);
+
+    private Color _bodyColor = new(0.85f, 0.2f, 0.2f);
+    private bool _hasThermalBox;
     private bool _hasPackage;
     private bool _hasPassenger;
     private float _lean;
+
+    /// <summary>Paint of the current vehicle model.</summary>
+    public Color BodyColor
+    {
+        get => _bodyColor;
+        set
+        {
+            _bodyColor = value;
+            QueueRedraw();
+        }
+    }
+
+    /// <summary>Insulated silver box instead of the plain delivery box.</summary>
+    public bool HasThermalBox
+    {
+        get => _hasThermalBox;
+        set
+        {
+            _hasThermalBox = value;
+            QueueRedraw();
+        }
+    }
 
     public bool HasPackage
     {
@@ -62,8 +87,12 @@ public partial class BikeVisual : Node2D
         // Handlebar
         DrawLine(new Vector2(9, -11), new Vector2(9, 11), new Color(0.2f, 0.2f, 0.2f), 3f);
         // Delivery box
-        var boxColor = HasPackage ? BoxFullColor : BoxEmptyColor;
+        var boxColor = HasThermalBox
+            ? (HasPackage ? ThermalBoxColor.Lightened(0.15f) : ThermalBoxColor)
+            : (HasPackage ? BoxFullColor : BoxEmptyColor);
         DrawRect(new Rect2(-26, -10, 15, 20), boxColor);
+        if (HasThermalBox)
+            DrawLine(new Vector2(-26, 0), new Vector2(-11, 0), new Color(0.3f, 0.55f, 0.95f), 3f); // insulation stripe
         DrawRect(new Rect2(-26, -10, 15, 20), boxColor.Darkened(0.5f), false, 2f);
         // Passenger sits behind the rider, on the front of the box.
         if (HasPassenger)

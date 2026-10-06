@@ -5,6 +5,9 @@
 [resource]
 script = ExtResource("1_vehicle")
 VehicleName = "Basic Scooter"
+ModelId = "basic_scooter"
+Description = "Your first scooter. Reliable, nothing more."
+BodyColor = Color(0.85, 0.2, 0.2, 1)
 MaxSpeed = 560.0
 ReverseMaxSpeed = 150.0
 Acceleration = 420.0
@@ -17,3 +20,7 @@ FuelCapacity = 4.0
 FuelPerKm = 0.08
 IdleFuelPerMinute = 0.02
 PushSpeed = 70.0
+BasePrice = 150
+ShopWeight = 0.0
+MinPerks = 0
+MaxPerks = 0

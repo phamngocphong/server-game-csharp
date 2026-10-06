@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Godot;
 
 namespace ShipperSimulator;
@@ -36,6 +38,13 @@ public partial class GameManager : Node
 	public Wallet Wallet { get; } = new();
 	public PlayerStats Stats { get; } = new();
 	public Reputation Reputation { get; } = new();
+	/// <summary>All vehicle models (loaded in _Ready).</summary>
+	public VehicleCatalog Catalog { get; private set; } = null!;
+	/// <summary>The player's vehicle and its options; survives scene changes, saved in the game save.</summary>
+	public OwnedVehicle Vehicle { get; private set; } = new();
+
+	private string _shopRotation = "";
+	private readonly HashSet<int> _soldOffers = new();
 	public Player? Player { get; private set; }
 	public CityMap? CityMap { get; private set; }
 	/// <summary>Weather of the gameplay scene; set by WeatherSystem while it is in the tree.</summary>
@@ -63,6 +72,8 @@ public partial class GameManager : Node
 		Wallet.BalanceChanged += OnWalletBalanceChanged;
 		Stats.Changed += OnStatsChanged;
 		Reputation.Changed += OnReputationChanged;
+		Catalog = GD.Load<VehicleCatalog>(VehicleCatalog.DefaultPath);
+		Vehicle = Catalog.CreateStarter();
 	}
 
 	public override void _Process(double delta)
@@ -95,6 +106,7 @@ public partial class GameManager : Node
 	{
 		CityMap = map;
 		Player = player;
+		ApplyVehicleToPlayer(fillTank: true);
 	}
 
 	/// <summary>Called when the gameplay scene leaves the tree, so autosave and stats stop touching freed nodes.</summary>
@@ -115,6 +127,9 @@ public partial class GameManager : Node
 		Wallet.LoadSaveData(new WalletSaveData());
 		Stats.LoadSaveData(new StatsSaveData());
 		Reputation.LoadSaveData(new ReputationSaveData());
+		Vehicle = Catalog.CreateStarter();
+		_shopRotation = "";
+		_soldOffers.Clear();
 		NextStart = StartMode.NewGame;
 	}
 
@@ -172,15 +187,79 @@ public partial class GameManager : Node
 			$"{full}Refueled {litersText} L for {FormatMoney(cost)}");
 	}
 
+	// --- Vehicle and shop ---------------------------------------------------------
+
+	public string VehicleName(OwnedVehicle? vehicle = null)
+	{
+		vehicle ??= Vehicle;
+		return Catalog.Find(vehicle.ModelId)?.VehicleName ?? vehicle.ModelId;
+	}
+
+	/// <summary>Gives the player the current vehicle's stats, color and thermal box.</summary>
+	public void ApplyVehicleToPlayer(bool fillTank = false)
+	{
+		var model = Catalog.Find(Vehicle.ModelId);
+		if (model == null)
+		{
+			GD.PushWarning($"GameManager: unknown vehicle model \"{Vehicle.ModelId}\", using the starter.");
+			Vehicle = Catalog.CreateStarter();
+			model = Catalog.Find(Vehicle.ModelId);
+		}
+		if (Player == null || model == null)
+			return;
+		Player.SetVehicle(Vehicle.BuildStats(model), model.BodyColor, Vehicle.HasPerk(VehiclePerkType.ThermalBox));
+		if (fillTank)
+			Player.SetFuel(Player.FuelCapacity);
+		EventBus.Instance.EmitSignal(EventBus.SignalName.VehicleChanged);
+	}
+
+	public bool IsOfferSold(VehicleOffer offer) => offer.SlotKey == _shopRotation && _soldOffers.Contains(offer.OfferId);
+
+	/// <summary>
+	/// Buys a shop vehicle, trading in the current one (<see cref="OwnedVehicle.TradeInValue"/>).
+	/// Returns an error message, or null on success.
+	/// </summary>
+	public string? BuyVehicle(VehicleOffer offer)
+	{
+		if (IsOfferSold(offer))
+			return "This vehicle has already been sold.";
+		var net = offer.Vehicle.Price - Vehicle.TradeInValue;
+		if (net > Wallet.Balance)
+			return "Not enough money.";
+
+		var oldName = VehicleName();
+		Wallet.Add(-net, $"Bought {offer.Model.VehicleName} (traded in {oldName})");
+		Vehicle = offer.Vehicle;
+		if (_shopRotation != offer.SlotKey)
+		{
+			_shopRotation = offer.SlotKey;
+			_soldOffers.Clear();
+		}
+		_soldOffers.Add(offer.OfferId);
+		ApplyVehicleToPlayer(fillTank: true);
+		SaveManager.Instance.SaveGame(silent: true);
+		return null;
+	}
+
+	/// <summary>Late penalty share for a job after the thermal box (timed package jobs only; jobs that fail when late stay failing).</summary>
+	public float LatePenaltyFor(JobData job) => job.IsPassenger || job.LatePenalty >= 1f
+		? job.LatePenalty
+		: job.LatePenalty * (1f - Vehicle.Perk(VehiclePerkType.ThermalBox));
+
+	/// <summary>Tip for delivering a job fast, raised by the thermal box (package jobs only).</summary>
+	public int TipFor(JobData job) => !job.HasTip ? 0 : job.IsPassenger
+		? job.TipAmount
+		: Mathf.Max(1, Mathf.RoundToInt(job.TipAmount * (1f + Vehicle.Perk(VehiclePerkType.ThermalBox))));
+
 	/// <summary>
 	/// Pays out a finished job (minus the late penalty, plus a tip for a fast delivery),
 	/// records the customer's rating and statistics.
 	/// </summary>
 	public DeliveryResult CompleteDelivery(JobData job, double elapsedTime, double deliveryTime, bool late)
 	{
-		var penalty = late ? Mathf.RoundToInt(job.Reward * job.LatePenalty) : 0;
+		var penalty = late ? Mathf.RoundToInt(job.Reward * LatePenaltyFor(job)) : 0;
 		var reward = Mathf.Max(1, job.Reward - penalty);
-		var tip = !late && job.HasTip && deliveryTime <= job.TipTimeLimit ? job.TipAmount : 0;
+		var tip = !late && job.HasTip && deliveryTime <= job.TipTimeLimit ? TipFor(job) : 0;
 		var lateTag = late ? " (late)" : "";
 		Wallet.Add(reward, $"{job.Title}{lateTag}: {job.PickupName} -> {job.DeliveryName}");
 		Wallet.Add(tip, $"Tip: {job.Title}");
@@ -268,6 +347,8 @@ public partial class GameManager : Node
 		Stats = Stats.ToSaveData(),
 		Reputation = Reputation.ToSaveData(),
 		Fuel = Player?.Fuel,
+		Vehicle = Vehicle.ToSaveData(),
+		Shop = new ShopSaveData { Rotation = _shopRotation, SoldOffers = _soldOffers.ToList() },
 		RegionId = CityMap?.Region.RegionId ?? "",
 		LayoutSeed = CityMap?.ActiveSeed ?? 0,
 		Player = Player?.GetSaveData(),
@@ -278,6 +359,11 @@ public partial class GameManager : Node
 		Wallet.LoadSaveData(data.Wallet);
 		Stats.LoadSaveData(data.Stats);
 		Reputation.LoadSaveData(data.Reputation);
+		Vehicle = data.Vehicle != null ? OwnedVehicle.FromSaveData(data.Vehicle) : Catalog.CreateStarter();
+		_shopRotation = data.Shop.Rotation;
+		_soldOffers.Clear();
+		_soldOffers.UnionWith(data.Shop.SoldOffers);
+		ApplyVehicleToPlayer(); // before the fuel, so the tank size is right
 		if (Player != null && data.Fuel.HasValue)
 			Player.SetFuel(data.Fuel.Value);
 		// A position is only meaningful on the same city layout; otherwise keep the spawn point.

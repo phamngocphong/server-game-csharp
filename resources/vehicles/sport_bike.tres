@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="VehicleStats" format=3]
+
+[ext_resource type="Script" path="res://scripts/player/VehicleStats.cs" id="1_vehicle"]
+
+[resource]
+script = ExtResource("1_vehicle")
+VehicleName = "Sport Bike"
+ModelId = "sport_bike"
+Description = "Fast and twitchy, thirsty. Best with a crash guard."
+BodyColor = Color(0.15, 0.15, 0.18, 1)
+MaxSpeed = 720.0
+ReverseMaxSpeed = 170.0
+Acceleration = 560.0
+BrakeDeceleration = 1050.0
+CoastDeceleration = 240.0
+TurnSpeed = 3.3
+Grip = 9.0
+HandbrakeGrip = 2.0
+FuelCapacity = 4.0
+FuelPerKm = 0.12
+IdleFuelPerMinute = 0.03
+PushSpeed = 70.0
+BasePrice = 900
+ShopWeight = 1.5
+MinPerks = 1
+MaxPerks = 3
+PerkWeights = Dictionary[String, float]({"speed": 3.0, "eco": 1.0, "thermal": 0.3, "guard": 2.0, "tank": 1.0})

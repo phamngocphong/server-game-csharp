@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="VehicleCatalog" format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicles/VehicleCatalog.cs" id="1_catalog"]
+[ext_resource type="Script" path="res://scripts/player/VehicleStats.cs" id="2_stats"]
+[ext_resource type="Resource" path="res://resources/vehicles/basic_scooter.tres" id="3_basic"]
+[ext_resource type="Resource" path="res://resources/vehicles/city_scooter.tres" id="4_city"]
+[ext_resource type="Resource" path="res://resources/vehicles/cargo_moto.tres" id="5_cargo"]
+[ext_resource type="Resource" path="res://resources/vehicles/e_scooter.tres" id="6_electric"]
+[ext_resource type="Resource" path="res://resources/vehicles/sport_bike.tres" id="7_sport"]
+
+[resource]
+script = ExtResource("1_catalog")
+Models = Array[ExtResource("2_stats")]([ExtResource("3_basic"), ExtResource("4_city"), ExtResource("5_cargo"), ExtResource("6_electric"), ExtResource("7_sport")])
+StarterModelId = "basic_scooter"

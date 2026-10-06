@@ -48,13 +48,14 @@ public partial class JobEntry : PanelContainer
         _timeLabel.Visible = job.IsTimed;
         if (job.IsTimed)
         {
-            var lateRule = job.LatePenalty >= 1f
+            var penalty = GameManager.Instance.LatePenaltyFor(job);
+            var lateRule = penalty >= 1f
                 ? "fails if late"
-                : $"late: -{Mathf.RoundToInt(job.LatePenalty * 100f)}%";
+                : $"late: -{Mathf.RoundToInt(penalty * 100f)}%";
             _timeLabel.Text = $"TIMED  Pickup {GameManager.FormatTime(job.PickupTimeLimit)}  -  " +
                 $"{(job.IsPassenger ? "Ride" : "Delivery")} {GameManager.FormatTime(job.DeliveryTimeLimit)}  ({lateRule})";
             if (job.HasTip)
-                _timeLabel.Text += $"\nTip +{GameManager.FormatMoney(job.TipAmount)} if done within {GameManager.FormatTime(job.TipTimeLimit)}";
+                _timeLabel.Text += $"\nTip +{GameManager.FormatMoney(GameManager.Instance.TipFor(job))} if done within {GameManager.FormatTime(job.TipTimeLimit)}";
         }
     }
 

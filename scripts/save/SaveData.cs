@@ -19,6 +19,9 @@ public sealed class GameSaveData
     public ReputationSaveData Reputation { get; set; } = new();
     /// <summary>Liters in the tank; null (older saves) = full.</summary>
     public float? Fuel { get; set; }
+    /// <summary>Current vehicle and its options; null (older saves) = the starter vehicle.</summary>
+    public VehicleSaveData? Vehicle { get; set; }
+    public ShopSaveData Shop { get; set; } = new();
     /// <summary>City and layout seed the player position belongs to.</summary>
     public string RegionId { get; set; } = "";
     public int LayoutSeed { get; set; }
@@ -52,6 +55,28 @@ public sealed class ReputationSaveData
     public int TotalLate { get; set; }
     public int TotalFailed { get; set; }
     public int TotalCancelled { get; set; }
+}
+
+public sealed class VehicleSaveData
+{
+    public string ModelId { get; set; } = "";
+    public int Price { get; set; }
+    public List<PerkSaveData> Perks { get; set; } = new();
+}
+
+public sealed class PerkSaveData
+{
+    /// <summary>VehiclePerkInfo.Id: speed, eco, thermal, guard, tank.</summary>
+    public string Id { get; set; } = "";
+    /// <summary>Strength as a fraction (0.15 = 15%).</summary>
+    public float Value { get; set; }
+}
+
+public sealed class ShopSaveData
+{
+    /// <summary>Shop rotation the sold list belongs to ("2026-10-06#1").</summary>
+    public string Rotation { get; set; } = "";
+    public List<int> SoldOffers { get; set; } = new();
 }
 
 public sealed class PlayerSaveData

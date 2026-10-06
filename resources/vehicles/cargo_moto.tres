@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="VehicleStats" format=3]
+
+[ext_resource type="Script" path="res://scripts/player/VehicleStats.cs" id="1_vehicle"]
+
+[resource]
+script = ExtResource("1_vehicle")
+VehicleName = "Cargo Moto"
+ModelId = "cargo_moto"
+Description = "Slow but sturdy, with a huge tank. Often fitted with a thermal box."
+BodyColor = Color(0.25, 0.6, 0.3, 1)
+MaxSpeed = 520.0
+ReverseMaxSpeed = 150.0
+Acceleration = 380.0
+BrakeDeceleration = 950.0
+CoastDeceleration = 250.0
+TurnSpeed = 2.8
+Grip = 10.5
+HandbrakeGrip = 2.4
+FuelCapacity = 6.0
+FuelPerKm = 0.09
+IdleFuelPerMinute = 0.025
+PushSpeed = 70.0
+BasePrice = 420
+ShopWeight = 2.5
+MinPerks = 1
+MaxPerks = 3
+PerkWeights = Dictionary[String, float]({"speed": 0.5, "eco": 1.0, "thermal": 4.0, "guard": 1.5, "tank": 2.0})

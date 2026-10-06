@@ -30,6 +30,7 @@ public partial class PauseMenu : Control
         _resumeButton = GetNode<Button>("%ResumeButton");
         _resumeButton.Pressed += Close;
         GetNode<Button>("%SaveButton").Pressed += OnSavePressed;
+        GetNode<Button>("%ShopButton").Pressed += OnShopPressed;
         GetNode<Button>("%MainMenuButton").Pressed += OnMainMenuPressed;
         GetNode<Button>("%QuitButton").Pressed += OnQuitPressed;
         _touchButton = GetNode<Button>("%TouchButton");
@@ -90,7 +91,8 @@ public partial class PauseMenu : Control
         _summaryLabel.Text =
             $"{city}  -  {weather}\n" +
             $"Balance {GameManager.FormatMoney(gm.Wallet.Balance)}   Deliveries {gm.Stats.TotalDeliveries}\n" +
-            $"Rating {GameManager.FormatRating(gm.Reputation.Rating)} / 5   Fuel {fuel}   Played {GameManager.FormatTime(gm.Stats.PlayTime)}";
+            $"Rating {GameManager.FormatRating(gm.Reputation.Rating)} / 5   Fuel {fuel}   Played {GameManager.FormatTime(gm.Stats.PlayTime)}\n" +
+            $"Vehicle: {gm.VehicleName()}";
     }
 
     private void RefreshOptions()
@@ -126,6 +128,8 @@ public partial class PauseMenu : Control
         SaveManager.Instance.SaveSettings();
         RefreshOptions();
     }
+
+    private void OnShopPressed() => EventBus.Instance.EmitSignal(EventBus.SignalName.ShopRequested);
 
     private void OnSavePressed()
     {

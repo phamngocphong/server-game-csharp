@@ -1,0 +1,27 @@
+[gd_resource type="Resource" script_class="VehicleStats" format=3]
+
+[ext_resource type="Script" path="res://scripts/player/VehicleStats.cs" id="1_vehicle"]
+
+[resource]
+script = ExtResource("1_vehicle")
+VehicleName = "City Scooter"
+ModelId = "city_scooter"
+Description = "A step up from the starter: a bit quicker and thriftier."
+BodyColor = Color(0.2, 0.45, 0.85, 1)
+MaxSpeed = 600.0
+ReverseMaxSpeed = 160.0
+Acceleration = 450.0
+BrakeDeceleration = 980.0
+CoastDeceleration = 260.0
+TurnSpeed = 3.1
+Grip = 9.5
+HandbrakeGrip = 2.2
+FuelCapacity = 4.5
+FuelPerKm = 0.07
+IdleFuelPerMinute = 0.02
+PushSpeed = 70.0
+BasePrice = 300
+ShopWeight = 3.0
+MinPerks = 0
+MaxPerks = 2
+PerkWeights = Dictionary[String, float]({"speed": 1.0, "eco": 2.0, "thermal": 0.5, "guard": 1.0, "tank": 1.0})

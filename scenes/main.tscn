@@ -15,6 +15,7 @@
 [ext_resource type="PackedScene" path="res://ui/delivery_result_popup.tscn" id="13_popup"]
 [ext_resource type="PackedScene" path="res://ui/pause_menu.tscn" id="28_pause"]
 [ext_resource type="Script" path="res://scripts/ui/TouchControls.cs" id="29_touch"]
+[ext_resource type="PackedScene" path="res://ui/shop_panel.tscn" id="30_shop"]
 [ext_resource type="Resource" path="res://resources/jobs/passenger_ride.tres" id="14_passenger"]
 [ext_resource type="Script" path="res://scripts/traffic/TrafficManager.cs" id="15_traffic"]
 [ext_resource type="Script" path="res://scripts/traffic/TrafficVehicleData.cs" id="16_vehicle_data"]
@@ -83,3 +84,5 @@ BlockingControls = [NodePath("../JobBoard/Panel"), NodePath("../DeliveryResultPo
 KeyboardHint = NodePath("../HUD/SpeedPanel/VBox/ControlsLabel")
 
 [node name="PauseMenu" parent="UI" instance=ExtResource("28_pause")]
+
+[node name="ShopPanel" parent="UI" instance=ExtResource("30_shop")]

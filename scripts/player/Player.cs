@@ -131,6 +131,15 @@ public partial class Player : CharacterBody2D
         _fuelWarningLevel = FuelRatio <= 0f ? 3 : FuelRatio <= 0.1f ? 2 : FuelRatio <= 0.25f ? 1 : 0;
     }
 
+    /// <summary>Switches to another vehicle (shop / save). The tank keeps its fuel, capped to the new size.</summary>
+    public void SetVehicle(VehicleStats stats, Color bodyColor, bool thermalBox)
+    {
+        VehicleStats = stats;
+        _visual.BodyColor = bodyColor;
+        _visual.HasThermalBox = thermalBox;
+        Fuel = Mathf.Min(Fuel, stats.FuelCapacity);
+    }
+
     /// <summary>Restores the tank from a save (any city).</summary>
     public void SetFuel(float liters)
     {
@@ -224,11 +233,13 @@ public partial class Player : CharacterBody2D
     private void Crash(TrafficVehicle vehicle, Vector2 normal)
     {
         var data = vehicle.Data;
-        StunTimeLeft = data.StunSeconds;
+        // Crash guard option shortens the stun.
+        var stun = data.StunSeconds * (1f - GameManager.Instance.Vehicle.Perk(VehiclePerkType.CrashGuard));
+        StunTimeLeft = stun;
         ForwardSpeed = 0f;
         Velocity = normal * CrashKnockback;
         vehicle.OnHitByPlayer();
-        EventBus.Instance.EmitSignal(EventBus.SignalName.PlayerCrashed, data.DisplayName, data.CollisionScore, data.StunSeconds);
+        EventBus.Instance.EmitSignal(EventBus.SignalName.PlayerCrashed, data.DisplayName, data.CollisionScore, stun);
     }
 
     private void UpdateSpeed(float throttle, bool handbrake, float dt)

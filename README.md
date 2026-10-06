@@ -58,6 +58,34 @@ The save file is `user://savegame.json`. It holds your wallet, statistics, drive
 - **New Game:** if a save exists, it first asks for confirmation and shows what will be lost. It then deletes the save, resets money, statistics and rating, and starts in a random city. That city is saved right away, so Continue brings you back to it.
 - **Not saved:** a job in progress. After Continue, you pick a new job from the board.
 
+### Vehicle shop
+
+Open it with **Vehicle Shop** in the pause menu. The game stays paused while you shop, and **Esc** goes back to the pause menu.
+
+- **Stock:** the shop has **4 vehicles** and restocks at **00:00, 08:00 and 16:00** on your computer's clock. A countdown shows the next restock. The stock is generated from the date and the time slot, so reopening the shop (or restarting the game) in the same slot shows the same vehicles. A vehicle you bought shows **Sold** until the next restock, and this is saved too.
+- **Models:** each model has its own base stats and colour.
+
+| Model | Top speed | Fuel | Tank | Base price | Options |
+|---|---|---|---|---|---|
+| Basic Scooter (starter, not sold) | 67 km/h | 8.0 L/100km | 4 L | $150 | none |
+| City Scooter | 72 km/h | 7.0 | 4.5 L | $300 | 0-2 |
+| Cargo Moto | 62 km/h | 9.0 | 6 L | $420 | 1-3, often a thermal box |
+| Electric Scooter | 65 km/h | 3.5 | 3 L | $600 | 0-2 |
+| Sport Bike | 86 km/h | 12.0 | 4 L | $900 | 1-3, often tuned or a crash guard |
+
+- **Options:** each vehicle in the shop is rolled with a random number of options, each with a random strength. Two vehicles of the same model can therefore be very different.
+
+| Option | Effect | Strength |
+|---|---|---|
+| Tuned engine | Top speed +x (acceleration +x/2) | 5-25% |
+| Eco engine | Fuel use -x | 10-40% |
+| Thermal box | Timed package jobs (food): late penalty -x **and** fast-delivery tips +x. Not for passengers. A silver box is drawn on the bike | 20-60% |
+| Crash guard | Stun after crashing into traffic -x | 20-60% |
+| Big tank | Fuel tank +x | 25-75% |
+
+- **Price** = base price + each option's strength × its price per percent, rounded to $10.
+- **Buying:** buying **trades in** your current vehicle for 40% of its value (the starter is worth $60). A confirmation shows exactly what you pay. The new vehicle comes with a full tank. The vehicle, its options and the shop's sold list are saved, and New Game gives the starter back.
+
 ### Pause menu
 
 Press **Esc** or **P**, or click/tap the **II** button at the top left of the HUD. The whole game freezes: your bike, traffic, traffic lights, weather, job timers, fuel use and play time all stop. The menu shows a short summary (city, weather, money, deliveries, rating, fuel and play time) and these buttons:
@@ -164,20 +192,21 @@ Every finished or failed job gets a customer rating:
 autoload/      Singletons: EventBus.cs (signals), GameManager.cs (state), SaveManager.cs (persistence)
 scenes/        main, player, city_map, job_marker (.tscn)
 data/cities/   City definitions, one JSON file per city (see "Adding a city")
-ui/            main_menu (startup scene), pause_menu, hud, job_board, job_entry, delivery_result_popup (.tscn)
+ui/            main_menu (startup scene), pause_menu, shop_panel, hud, job_board, job_entry, delivery_result_popup (.tscn)
 scripts/
   Main.cs      Composition root: picks a random city, registers the world, loads the save, opens the board
   player/      Player (motorbike controller), BikeVisual, TargetIndicator, VehicleStats
   map/         CityMap (procedural builder), GasStation, CityLoader + CityConfig (JSON -> CityRegionData), Building, CityRegionData, DistrictData, DeliveryLocation
   jobs/        JobManager (state machine), JobGenerator, JobTemplate, JobData, JobMarker, DeliveryResult
   economy/     Wallet (+ WalletEntry), PlayerStats, Reputation (driver rating)
+  vehicles/    VehicleCatalog, OwnedVehicle (+ PerkRoll), VehiclePerks (option table), VehicleShop (stock rotation)
   traffic/     TrafficManager (spawner), TrafficVehicle (AI road user), TrafficVehicleData, TrafficLights (signals + fines)
   weather/     WeatherSystem (picks and fades weather), WeatherData, RainOverlay
   save/        SaveData.cs: JSON save DTOs; GameSettings.cs: preferences (touch controls)
-  ui/          MainMenu, PauseMenu, TouchControls, Hud, JobBoard, JobEntry, DeliveryResultPopup, StarRating (draws 0-5 stars)
+  ui/          MainMenu, PauseMenu, ShopPanel, TouchControls, Hud, JobBoard, JobEntry, DeliveryResultPopup, StarRating (draws 0-5 stars)
 resources/
   jobs/        JobTemplate .tres files (one per job type): parcel, documents, fragile_electronics, food_delivery, passenger_ride
-  vehicles/    VehicleStats .tres files
+  vehicles/    vehicle_catalog.tres + one VehicleStats .tres per model (basic_scooter, city_scooter, cargo_moto, e_scooter, sport_bike)
   traffic/     TrafficVehicleData .tres files: bicycle, motorbike, car, bus
   weather/     WeatherData .tres files: sunny, cloudy, rain, storm
   ui/          ui_theme.tres
@@ -197,6 +226,13 @@ All C# code is in the `ShipperSimulator` namespace. Godot requires each script f
   - **Pausing:** when the tree pauses or the app loses focus, every touch action is released.
   - **Settings:** they come from `SaveManager.Settings` (`GameSettings`), which `SaveManager.LoadSettings()` / `SaveSettings()` read and write. A save triggers `EventBus.SettingsChanged`.
   - **Mobile export:** `export_presets.cfg` only has a Windows preset. Add an Android or iOS preset in the editor (Project → Export). Godot .NET supports Android, and iOS is experimental. Include `data/cities/*.json` in its `include_filter`, like the Windows preset.
+- **Vehicles and the shop:**
+  - **Models:** a model is a `VehicleStats` .tres. It holds the handling and fuel values plus the `Shop` group: `ModelId`, `BasePrice`, `ShopWeight` (0 = never sold), `MinPerks`/`MaxPerks`, and `PerkWeights` by option id. `VehicleCatalog` (`resources/vehicles/vehicle_catalog.tres`) lists every model and the starter.
+  - **Owned vehicle:** `GameManager.Vehicle` is an `OwnedVehicle` (model id, price, `PerkRoll`s). `BuildStats()` duplicates the model and applies the speed, eco and tank options. `GameManager.ApplyVehicleToPlayer()` hands the result to `Player.SetVehicle()`, together with the colour and the thermal box.
+  - **Option effects outside the stats:** Crash guard is read in `Player.Crash()`. The thermal box goes through `GameManager.LatePenaltyFor()` and `GameManager.TipFor()`, which payouts, job cards and the "running late" toast all use.
+  - **Shop stock:** `VehicleShop.GenerateOffers(catalog, rotationKey)` is deterministic. It uses `System.Random`, seeded with an FNV-1a hash of the key (`"2026-10-06#1"`), because `string.GetHashCode` differs between runs. Set `ShopPanel.RotationOverride` in the inspector to preview any rotation.
+  - **Buying:** `GameManager.BuyVehicle()` charges the price minus the trade-in, marks the offer as sold for that rotation, switches vehicles with a full tank and saves.
+  - **Options table:** the options, their ranges and their prices live in `VehiclePerks.All`.
 - **Pausing:** the HUD pause button (`focus_mode = None`, so Space and Enter never press it while driving) emits `EventBus.PauseMenuRequested`, which `PauseMenu.Open()` listens to. `PauseMenu` (under the `UI` CanvasLayer) sets `SceneTree.Paused`. It is the only gameplay node with `ProcessMode.Always`, so it keeps handling input while everything else stops. `GameManager` also always processes, so that F5 works while paused, but it skips play time and autosave when the tree is paused. Before changing scene, the pause menu unpauses the tree.
 - **GameManager** (`GameManager.Instance`) owns the global state (`Wallet`, `PlayerStats`, `Reputation`, world references) and holds the helpers for payouts and formatting (`FormatMoney`, `FormatDistance`...). It also builds the data that goes into the save file.
 - **SaveManager** writes and reads versioned JSON (currently version 3) through `System.Text.Json`, using the DTOs in `scripts/save/SaveData.cs` with snake_case keys. Add migrations in `Migrate()`. The file is `SaveManager.SavePath`, which defaults to `user://savegame.json`. You can change it for save slots or for tests that must not touch the real save.
@@ -295,12 +331,12 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
 | Feature | Extension point |
 |---|---|
 | More weather | Add a `WeatherData` .tres (for example fog: `SpeedMultiplier` 0.85 and a gray `Tint`) to `WeatherTypes` on the `Weather` node, then weight it in the city JSON. |
-| Fuel upgrades | Make a `VehicleStats` .tres with a bigger `FuelCapacity` or a lower `FuelPerKm` (see "Vehicle upgrades"). |
+| New vehicle model | Add a `VehicleStats` .tres (with a unique `ModelId` and shop data) to `vehicle_catalog.tres`. |
+| New vehicle option | Add a `VehiclePerkType` and a row in `VehiclePerks.All`, then apply it in `OwnedVehicle.BuildStats()` or wherever it acts. Saves store options by id. |
 | More traffic types | Add a `TrafficVehicleData` .tres (for example a truck: `Shape = Bus`, a higher `CollisionScore`) and add it to `VehicleTypes` on the `Traffic` node. Cities can weight it by `VehicleId`. |
 | More traffic laws | Follow the `TrafficLights.CheckPlayer()` pattern (for example speeding in a district, or driving against traffic) and charge with `GameManager.ApplyTrafficFine()`. |
 | Crash consequences | Listen to `EventBus.PlayerCrashed`, for example to damage fragile cargo, upset passengers (`Reputation`) or count crashes in `PlayerStats`. |
 | Reputation | Add a stat to `PlayerStats` and `StatsSaveData`, and adjust it in `GameManager.CompleteDelivery()`. Expose it through `GetRewardMultiplier()` and add fields to `DeliveryResult`. |
-| Vehicle upgrades | Add more `VehicleStats` .tres files, buy them with `Wallet.Spend()`, and swap `Player.VehicleStats`. Save the owned vehicle id in the save DTOs. |
 | More cities | Add a JSON file to `data/cities/` (see "Adding a city"). A city picker on the menu could pass the chosen `code` to `Main` in place of the random pick in `Main._EnterTree()`. |
 | Modded cities | Call `CityLoader.LoadAll("user://cities")` as well, so players can add JSON files without rebuilding the game. |
 | More timed jobs | Set `IsTimed = true` on any `JobTemplate` .tres. Time limits and penalties need no code. |
