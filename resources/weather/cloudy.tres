@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="WeatherData" format=3]
+
+[ext_resource type="Script" path="res://scripts/weather/WeatherData.cs" id="1_weather"]
+
+[resource]
+script = ExtResource("1_weather")
+WeatherId = "cloudy"
+DisplayName = "Cloudy"
+SpeedMultiplier = 1.0
+AccelerationMultiplier = 1.0
+GripMultiplier = 1.0
+FuelMultiplier = 1.0
+RewardMultiplier = 1.0
+Tint = Color(0.9, 0.92, 0.95, 1)
+RainIntensity = 0.0
+MinDuration = 60.0
+MaxDuration = 120.0
+DefaultWeight = 2.0

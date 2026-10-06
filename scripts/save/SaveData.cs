@@ -17,6 +17,8 @@ public sealed class GameSaveData
     public WalletSaveData Wallet { get; set; } = new();
     public StatsSaveData Stats { get; set; } = new();
     public ReputationSaveData Reputation { get; set; } = new();
+    /// <summary>Liters in the tank; null (older saves) = full.</summary>
+    public float? Fuel { get; set; }
     /// <summary>City and layout seed the player position belongs to.</summary>
     public string RegionId { get; set; } = "";
     public int LayoutSeed { get; set; }
@@ -37,6 +39,7 @@ public sealed class StatsSaveData
     public int TotalTips { get; set; }
     public int TotalViolations { get; set; }
     public int TotalFines { get; set; }
+    public int TotalFuelSpent { get; set; }
     public float TotalDistance { get; set; }
     public double PlayTime { get; set; }
 }

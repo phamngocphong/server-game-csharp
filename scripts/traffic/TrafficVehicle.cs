@@ -106,7 +106,8 @@ public partial class TrafficVehicle : AnimatableBody2D
             _blockedTime = 0f;
         }
 
-        var targetSpeed = blocked || _hitPauseTime > 0f ? 0f : _cruiseSpeed;
+        var weatherSpeed = GameManager.Instance.Weather?.Current.SpeedMultiplier ?? 1f;
+        var targetSpeed = blocked || _hitPauseTime > 0f ? 0f : _cruiseSpeed * weatherSpeed;
         if (stopLeft < float.PositiveInfinity)
             targetSpeed = Mathf.Min(targetSpeed, Mathf.Sqrt(2f * BrakeDeceleration * 0.5f * stopLeft));
         var rate = targetSpeed < _speed ? BrakeDeceleration : Acceleration;

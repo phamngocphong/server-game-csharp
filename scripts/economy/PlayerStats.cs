@@ -15,6 +15,8 @@ public sealed class PlayerStats
     /// <summary>Red lights run and the money paid for them.</summary>
     public int TotalViolations { get; private set; }
     public int TotalFines { get; private set; }
+    /// <summary>Money spent at gas stations.</summary>
+    public int TotalFuelSpent { get; private set; }
     /// <summary>Sum of delivery route distances, in pixels.</summary>
     public float TotalDistance { get; private set; }
     /// <summary>Seconds played.</summary>
@@ -37,6 +39,12 @@ public sealed class PlayerStats
         Changed?.Invoke();
     }
 
+    public void RecordFuel(int cost)
+    {
+        TotalFuelSpent += cost;
+        Changed?.Invoke();
+    }
+
     public StatsSaveData ToSaveData() => new()
     {
         TotalDeliveries = TotalDeliveries,
@@ -45,6 +53,7 @@ public sealed class PlayerStats
         TotalTips = TotalTips,
         TotalViolations = TotalViolations,
         TotalFines = TotalFines,
+        TotalFuelSpent = TotalFuelSpent,
         TotalDistance = TotalDistance,
         PlayTime = PlayTime,
     };
@@ -57,6 +66,7 @@ public sealed class PlayerStats
         TotalTips = data.TotalTips;
         TotalViolations = data.TotalViolations;
         TotalFines = data.TotalFines;
+        TotalFuelSpent = data.TotalFuelSpent;
         TotalDistance = data.TotalDistance;
         PlayTime = data.PlayTime;
         Changed?.Invoke();

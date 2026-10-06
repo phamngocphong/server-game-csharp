@@ -6,7 +6,8 @@ namespace ShipperSimulator;
 /// Top-down motorbike controller.
 /// W/S throttle and brake/reverse, A/D steer (needs speed to turn), Space handbrake.
 /// Crashing into traffic stuns the player (no control) for the vehicle's
-/// <see cref="TrafficVehicleData.StunSeconds"/>.
+/// <see cref="TrafficVehicleData.StunSeconds"/>. Driving burns fuel; with an empty tank the
+/// rider can only push the bike. The current weather scales speed, acceleration, grip and fuel use.
 /// </summary>
 public partial class Player : CharacterBody2D
 {
@@ -30,6 +31,24 @@ public partial class Player : CharacterBody2D
 
     private float _crashImmunity;
 
+    /// <summary>Liters in the tank.</summary>
+    public float Fuel { get; private set; }
+    public float FuelCapacity => VehicleStats.FuelCapacity;
+    public float FuelRatio => FuelCapacity > 0f ? Fuel / FuelCapacity : 0f;
+    public bool IsOutOfFuel => Fuel <= 0f;
+
+    private Vector2 _lastFuelPosition;
+    /// <summary>0 = no warning given yet for this tank, 1 = low, 2 = almost empty, 3 = empty.</summary>
+    private int _fuelWarningLevel;
+
+    private WeatherData? Weather => GameManager.Instance.Weather?.Current;
+    private float MaxForwardSpeed => IsOutOfFuel
+        ? VehicleStats.PushSpeed
+        : VehicleStats.MaxSpeed * (Weather?.SpeedMultiplier ?? 1f);
+    private float CurrentAcceleration => IsOutOfFuel
+        ? VehicleStats.Acceleration * 0.35f
+        : VehicleStats.Acceleration * (Weather?.AccelerationMultiplier ?? 1f);
+
     private BikeVisual _visual = null!;
     private Camera2D _camera = null!;
 
@@ -38,6 +57,8 @@ public partial class Player : CharacterBody2D
         VehicleStats ??= new VehicleStats();
         _visual = GetNode<BikeVisual>("BikeVisual");
         _camera = GetNode<Camera2D>("Camera2D");
+        Fuel = VehicleStats.FuelCapacity;
+        _lastFuelPosition = GlobalPosition;
 
         var bus = EventBus.Instance;
         bus.PlayerControlsLocked += OnControlsLocked;
@@ -87,7 +108,7 @@ public partial class Player : CharacterBody2D
         UpdateSteering(steer, dt);
 
         var forward = Vector2.Right.Rotated(Rotation);
-        var grip = handbrake ? VehicleStats.HandbrakeGrip : VehicleStats.Grip;
+        var grip = (handbrake ? VehicleStats.HandbrakeGrip : VehicleStats.Grip) * (Weather?.GripMultiplier ?? 1f);
         Velocity = Velocity.Lerp(forward * ForwardSpeed, Mathf.Clamp(grip * dt, 0f, 1f));
         var velocityBefore = Velocity;
         MoveAndSlide();
@@ -98,10 +119,61 @@ public partial class Player : CharacterBody2D
             ForwardSpeed = Mathf.Clamp(Velocity.Dot(forward), -VehicleStats.ReverseMaxSpeed, VehicleStats.MaxSpeed);
         }
 
+        ConsumeFuel(dt);
         UpdateVisuals(steer, dt);
         UpdateCamera(dt);
     }
 
+    /// <summary>Adds fuel (from a gas station) and resets the low-fuel warnings.</summary>
+    public void AddFuel(float liters)
+    {
+        Fuel = Mathf.Clamp(Fuel + liters, 0f, FuelCapacity);
+        _fuelWarningLevel = FuelRatio <= 0f ? 3 : FuelRatio <= 0.1f ? 2 : FuelRatio <= 0.25f ? 1 : 0;
+    }
+
+    /// <summary>Restores the tank from a save (any city).</summary>
+    public void SetFuel(float liters)
+    {
+        Fuel = 0f;
+        AddFuel(liters);
+    }
+
+    private void ConsumeFuel(float dt)
+    {
+        var moved = GlobalPosition.DistanceTo(_lastFuelPosition);
+        _lastFuelPosition = GlobalPosition;
+        if (IsOutOfFuel)
+            return; // pushing the bike uses no fuel
+        if (moved > 200f)
+            moved = 0f; // teleport (save load, spawn), not driving
+
+        var used = moved / GameManager.PixelsPerKm * VehicleStats.FuelPerKm;
+        if (ControlsEnabled)
+            used += VehicleStats.IdleFuelPerMinute * dt / 60f;
+        Fuel = Mathf.Max(0f, Fuel - used * (Weather?.FuelMultiplier ?? 1f));
+        WarnLowFuel();
+    }
+
+    private void WarnLowFuel()
+    {
+        var level = IsOutOfFuel ? 3 : FuelRatio <= 0.1f ? 2 : FuelRatio <= 0.25f ? 1 : 0;
+        if (level <= _fuelWarningLevel)
+            return;
+        _fuelWarningLevel = level;
+        var station = GameManager.Instance.CityMap?.GetNearestGasStation(GlobalPosition);
+        var where = station != null
+            ? $" - nearest gas station {GameManager.FormatDistance(JobGenerator.RouteDistance(GlobalPosition, station.GlobalPosition))}"
+            : "";
+        var text = level switch
+        {
+            3 => "Out of fuel! Push the bike to a gas station",
+            2 => "Fuel almost empty!",
+            _ => "Low fuel",
+        };
+        EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested, text + where);
+    }
+
+    /// <summary>Speed relative to the bike's dry-road top speed (also drives steering and camera).</summary>
     public float GetSpeedRatio() => Mathf.Clamp(Mathf.Abs(ForwardSpeed) / VehicleStats.MaxSpeed, 0f, 1f);
 
     public float GetSpeedKmh() => Velocity.Length() * GameManager.SpeedToKmh;
@@ -162,22 +234,28 @@ public partial class Player : CharacterBody2D
     private void UpdateSpeed(float throttle, bool handbrake, float dt)
     {
         var s = VehicleStats;
+        var maxSpeed = MaxForwardSpeed;
+        var acceleration = CurrentAcceleration;
+        var reverseMax = Mathf.Min(s.ReverseMaxSpeed, maxSpeed);
         if (throttle > 0f)
         {
             ForwardSpeed = ForwardSpeed < 0f
                 ? Mathf.MoveToward(ForwardSpeed, 0f, s.BrakeDeceleration * dt)
-                : Mathf.MoveToward(ForwardSpeed, s.MaxSpeed * throttle, s.Acceleration * dt);
+                : Mathf.MoveToward(ForwardSpeed, maxSpeed * throttle, acceleration * dt);
         }
         else if (throttle < 0f)
         {
             ForwardSpeed = ForwardSpeed > 0f
                 ? Mathf.MoveToward(ForwardSpeed, 0f, s.BrakeDeceleration * dt)
-                : Mathf.MoveToward(ForwardSpeed, -s.ReverseMaxSpeed, s.Acceleration * 0.5f * dt);
+                : Mathf.MoveToward(ForwardSpeed, -reverseMax, acceleration * 0.5f * dt);
         }
         else
         {
             ForwardSpeed = Mathf.MoveToward(ForwardSpeed, 0f, s.CoastDeceleration * dt);
         }
+        // Weather got worse or the tank ran dry while going fast: slow down to the new limit.
+        if (ForwardSpeed > maxSpeed)
+            ForwardSpeed = Mathf.MoveToward(ForwardSpeed, maxSpeed, s.CoastDeceleration * dt);
 
         if (handbrake)
             ForwardSpeed = Mathf.MoveToward(ForwardSpeed, 0f, s.BrakeDeceleration * 0.4f * dt);

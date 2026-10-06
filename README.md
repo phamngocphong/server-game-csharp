@@ -79,6 +79,30 @@ Some of the inner intersections have traffic lights: 50% in Hanoi, 35% in Da Nan
 - **You** are fined if you enter a lit intersection while the light for your direction is **red**. Entering on yellow is allowed. The fine is **$20**, and every earlier violation in the last 2 minutes adds another $20, up to ×3 ($60). The money comes out of your wallet, which can go negative. The screen flashes red and a toast shows the fine.
 - **Records:** the Job Board shows `Red lights run` and `Fines`, and both are saved (save version 4).
 
+### Fuel and gas stations
+
+The scooter has a **4 L** tank and burns **0.08 L/km**, plus a little while idling (0.02 L/min). That gives about 50 km on a full tank.
+
+- **Gauge:** the HUD shows a fuel bar. Below 30% it also shows the distance to the nearest gas station. You get warnings at 25% and 10%.
+- **Empty tank:** you can only **push the bike** at about 8 km/h (`VehicleStats.PushSpeed`). You never get stuck for good.
+- **Gas stations:** every city has a few, well spread out and placed from the layout seed, so they stay in the same places. A station is a yellow circle with a red pump and a "GAS" sign. Drive in and press **E** to fill the tank at the city's price per liter (`fuel.price_per_liter` in the city JSON). If you cannot afford a full tank, you buy what your balance covers. With no money you cannot buy fuel.
+- **Records:** the Job Board shows the money spent on fuel, and the tank level is saved (save version 5).
+
+### Weather
+
+The weather changes every 1-3 minutes. Each city weights the kinds differently through `weather.weights` in its JSON. The world is tinted to match, rain falls on screen, and storms have lightning flashes.
+
+| Weather | Speed | Grip | Fuel use | Job pay |
+|---|---|---|---|---|
+| Sunny | 100% | 100% | **×1.4** | 100% |
+| Cloudy | 100% | 100% | ×1 | 100% |
+| Rain | **75%** | 70% | ×1 | +15% |
+| Storm | **60%** | 55% | ×1.05 | +30% |
+
+- **Who is affected:** speed and acceleration apply to you and to AI traffic. Lower grip makes the bike slide more in turns.
+- **Pay:** the pay bonus goes through `GameManager.GetRewardMultiplier()`, so jobs on the board pay more while it rains.
+- **Display:** the HUD shows the current weather and its effects, and a toast announces each change.
+
 ### Driver rating (1-5 stars)
 
 Every finished or failed job gets a customer rating:
@@ -106,16 +130,18 @@ ui/            main_menu (startup scene), hud, job_board, job_entry, delivery_re
 scripts/
   Main.cs      Composition root: picks a random city, registers the world, loads the save, opens the board
   player/      Player (motorbike controller), BikeVisual, TargetIndicator, VehicleStats
-  map/         CityMap (procedural builder), CityLoader + CityConfig (JSON -> CityRegionData), Building, CityRegionData, DistrictData, DeliveryLocation
+  map/         CityMap (procedural builder), GasStation, CityLoader + CityConfig (JSON -> CityRegionData), Building, CityRegionData, DistrictData, DeliveryLocation
   jobs/        JobManager (state machine), JobGenerator, JobTemplate, JobData, JobMarker, DeliveryResult
   economy/     Wallet (+ WalletEntry), PlayerStats, Reputation (driver rating)
   traffic/     TrafficManager (spawner), TrafficVehicle (AI road user), TrafficVehicleData, TrafficLights (signals + fines)
+  weather/     WeatherSystem (picks and fades weather), WeatherData, RainOverlay
   save/        SaveData.cs: JSON save DTOs
   ui/          MainMenu, Hud, JobBoard, JobEntry, DeliveryResultPopup, StarRating (draws 0-5 stars)
 resources/
   jobs/        JobTemplate .tres files (one per job type): parcel, documents, fragile_electronics, food_delivery, passenger_ride
   vehicles/    VehicleStats .tres files
   traffic/     TrafficVehicleData .tres files: bicycle, motorbike, car, bus
+  weather/     WeatherData .tres files: sunny, cloudy, rain, storm
   ui/          ui_theme.tres
 ```
 
@@ -153,6 +179,17 @@ Physics layers: 1 = player, 2 = world, 3 = interactables (markers), 4 = traffic.
   - **Braking:** an `Area2D` sensor in front of each vehicle brakes for the player and for traffic heading the same way. Crossing traffic is ignored, so vehicles can briefly overlap in the middle of an intersection. If a vehicle waits behind other traffic for more than 3 s, it ignores that traffic for a moment, which clears jams.
   - **Crashes:** `Player.CheckTrafficCrash()` compares the closing speed along the contact normal with `MinCrashSpeed` and then calls `Crash()`. That sets `StunTimeLeft`, pushes the bike back, makes the vehicle stop for 1.5 s and emits `EventBus.PlayerCrashed`.
   - **Tuning:** vehicle sizes, colors, speeds, `CollisionScore` and `SpawnWeight` are in `resources/traffic/*.tres`. The seconds per collision point are set by `TrafficVehicleData.StunSecondsPerPoint`.
+- **Fuel:**
+  - **Player:** `Player` holds `Fuel`. `ConsumeFuel()` charges for the distance moved each physics frame (jumps over 200 px, such as teleports, are ignored) plus idle use, multiplied by the weather's `FuelMultiplier`. With an empty tank, `MaxForwardSpeed` drops to `PushSpeed`.
+  - **Stations:** `CityMap.BuildGasStations()` turns well-spread curbside addresses into `GasStation`s using farthest-point sampling and its own seeded RNG. Those addresses are removed from the job locations.
+  - **Buying:** `GasStation` handles **E** and calls `GameManager.BuyFuel()`.
+  - **Settings:** tank size and consumption are on `VehicleStats` (`FuelCapacity`, `FuelPerKm`, `IdleFuelPerMinute`, `PushSpeed`).
+- **WeatherSystem** (the `Weather` node in `main.tscn`):
+  - **Registration:** it registers itself as `GameManager.Weather`.
+  - **Picking:** `WeatherData` is chosen by the city weights, avoiding a repeat of the current kind. Its duration is random between `MinDuration` and `MaxDuration`.
+  - **Visuals:** a `CanvasModulate` tints the world, and a `RainOverlay` on CanvasLayer 5 draws the rain. The UI is on layer 10, above both. Changing weather fades both over a few seconds.
+  - **Effects:** `Player` reads the speed, acceleration, grip and fuel multipliers, `TrafficVehicle` reads the speed multiplier, and `GetRewardMultiplier()` reads the pay multiplier.
+  - **Testing:** `ForceWeather(id)` switches weather on demand.
 - **TrafficLights** (the `TrafficLights` node in `main.tscn`):
   - **Signals:** `GetSignal(node, dir)` and `GetSignalForAxis(node, horizontal)` return `None`, `Green`, `Yellow` or `Red`. A vehicle asks for the signal of the intersection it is driving towards, via `TrafficVehicle.DistanceToStopLine()`.
   - **Enforcement:** each physics frame, `CheckPlayer()` finds the intersection the player is in. On entering, it uses the side the player came from to pick the east-west or north-south light. It ignores entries when the player is stunned or slower than `MinViolationSpeed`.
@@ -191,6 +228,13 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
     "count": -1,                    // number of AI vehicles; -1 = about 0.6 per block
     "weights": { "motorbike": 8, "car": 2, "bicycle": 3, "bus": 0.5 },  // ids from resources/traffic
     "light_chance": 0.45            // share of inner intersections with traffic lights (0-1)
+  },
+  "fuel": {
+    "price_per_liter": 2.5,         // money per liter at the gas stations
+    "stations": -1                  // number of gas stations; -1 = about one per 12 blocks (min 3)
+  },
+  "weather": {
+    "weights": { "sunny": 3, "cloudy": 1.5, "rain": 2.5, "storm": 0.5 }  // ids from resources/weather
   }
 }
 ```
@@ -201,8 +245,8 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
 
 | Feature | Extension point |
 |---|---|
-| Fuel | Add `FuelCapacity` and `Consumption` to `VehicleStats`. Add a `FuelSystem` node that reads the player's speed and calls `Wallet.Spend()` at gas stations (a new location type in `CityMap`). |
-| Weather | Add a `WeatherManager` autoload. Have it adjust `VehicleStats.Grip` and return a bonus from `GameManager.GetRewardMultiplier()`. |
+| More weather | Add a `WeatherData` .tres (for example fog: `SpeedMultiplier` 0.85 and a gray `Tint`) to `WeatherTypes` on the `Weather` node, then weight it in the city JSON. |
+| Fuel upgrades | Make a `VehicleStats` .tres with a bigger `FuelCapacity` or a lower `FuelPerKm` (see "Vehicle upgrades"). |
 | More traffic types | Add a `TrafficVehicleData` .tres (for example a truck: `Shape = Bus`, a higher `CollisionScore`) and add it to `VehicleTypes` on the `Traffic` node. Cities can weight it by `VehicleId`. |
 | More traffic laws | Follow the `TrafficLights.CheckPlayer()` pattern (for example speeding in a district, or driving against traffic) and charge with `GameManager.ApplyTrafficFine()`. |
 | Crash consequences | Listen to `EventBus.PlayerCrashed`, for example to damage fragile cargo, upset passengers (`Reputation`) or count crashes in `PlayerStats`. |

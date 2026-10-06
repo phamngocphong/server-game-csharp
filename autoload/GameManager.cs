@@ -25,6 +25,8 @@ public partial class GameManager : Node
 	public Reputation Reputation { get; } = new();
 	public Player? Player { get; private set; }
 	public CityMap? CityMap { get; private set; }
+	/// <summary>Weather of the gameplay scene; set by WeatherSystem while it is in the tree.</summary>
+	public WeatherSystem? Weather { get; set; }
 
 	private double _autosaveTimer;
 
@@ -90,7 +92,46 @@ public partial class GameManager : Node
 	/// Global reward multiplier hook. The driver rating applies here; future systems
 	/// (weather, rush hour, vehicle perks...) plug in here too.
 	/// </summary>
-	public float GetRewardMultiplier(JobTemplate template) => Reputation.RewardMultiplier;
+	public float GetRewardMultiplier(JobTemplate template) =>
+		Reputation.RewardMultiplier * (Weather?.Current.RewardMultiplier ?? 1f);
+
+	/// <summary>
+	/// Fills the player's tank at a gas station. With too little money it buys what the
+	/// balance covers; with none it refuses.
+	/// </summary>
+	public void BuyFuel(string stationName)
+	{
+		if (Player == null || CityMap == null)
+			return;
+		var price = CityMap.Region.FuelPrice;
+		var missing = Player.FuelCapacity - Player.Fuel;
+		if (missing < 0.05f)
+		{
+			EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested, "The tank is already full");
+			return;
+		}
+
+		var liters = missing;
+		var cost = Mathf.CeilToInt(liters * price);
+		if (cost > Wallet.Balance)
+		{
+			if (Wallet.Balance <= 0)
+			{
+				EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested, "Not enough money for fuel");
+				return;
+			}
+			cost = Wallet.Balance;
+			liters = cost / price;
+		}
+
+		var litersText = liters.ToString("0.0", CultureInfo.InvariantCulture);
+		Wallet.Add(-cost, $"Fuel {litersText} L: {stationName}");
+		Stats.RecordFuel(cost);
+		Player.AddFuel(liters);
+		var full = Player.FuelRatio >= 0.99f ? "Full tank! " : "";
+		EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested,
+			$"{full}Refueled {litersText} L for {FormatMoney(cost)}");
+	}
 
 	/// <summary>
 	/// Pays out a finished job (minus the late penalty, plus a tip for a fast delivery),
@@ -167,6 +208,10 @@ public partial class GameManager : Node
 		Stats.RecordFine(amount);
 	}
 
+	/// <summary>Price with cents, e.g. "$2.40".</summary>
+	public static string FormatPrice(float amount) =>
+		CurrencySymbol + amount.ToString("0.00", CultureInfo.InvariantCulture);
+
 	/// <summary>Rating with one decimal, e.g. "4.7".</summary>
 	public static string FormatRating(float rating) => rating.ToString("0.0", CultureInfo.InvariantCulture);
 
@@ -183,6 +228,7 @@ public partial class GameManager : Node
 		Wallet = Wallet.ToSaveData(),
 		Stats = Stats.ToSaveData(),
 		Reputation = Reputation.ToSaveData(),
+		Fuel = Player?.Fuel,
 		RegionId = CityMap?.Region.RegionId ?? "",
 		LayoutSeed = CityMap?.ActiveSeed ?? 0,
 		Player = Player?.GetSaveData(),
@@ -193,6 +239,8 @@ public partial class GameManager : Node
 		Wallet.LoadSaveData(data.Wallet);
 		Stats.LoadSaveData(data.Stats);
 		Reputation.LoadSaveData(data.Reputation);
+		if (Player != null && data.Fuel.HasValue)
+			Player.SetFuel(data.Fuel.Value);
 		// A position is only meaningful on the same city layout; otherwise keep the spawn point.
 		var sameMap = CityMap != null && data.RegionId == CityMap.Region.RegionId && data.LayoutSeed == CityMap.ActiveSeed;
 		if (Player != null && data.Player != null && sameMap)

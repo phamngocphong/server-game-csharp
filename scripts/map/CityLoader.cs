@@ -100,7 +100,11 @@ public static class CityLoader
             VerticalStreetNames = c.Streets.Vertical.ToArray(),
             TrafficCount = c.Traffic.Count,
             TrafficLightChance = c.Traffic.LightChance,
+            FuelPrice = c.Fuel.PricePerLiter,
+            FuelStationCount = c.Fuel.Stations,
         };
+        foreach (var (id, weight) in c.Weather.Weights)
+            region.WeatherWeights[id] = weight;
         foreach (var (id, weight) in c.Traffic.Weights)
             region.TrafficWeights[id] = weight;
         foreach (var d in c.Districts)
@@ -170,6 +174,12 @@ public static class CityLoader
             errors.Add("traffic.weights cannot be negative.");
         if (c.Traffic.LightChance is < 0f or > 1f)
             errors.Add("traffic.light_chance must be between 0 and 1.");
+        if (c.Fuel.PricePerLiter <= 0f)
+            errors.Add("fuel.price_per_liter must be greater than 0.");
+        if (c.Fuel.Stations > 50)
+            errors.Add("fuel.stations must be 50 or less (-1 = automatic).");
+        if (c.Weather.Weights.Values.Any(w => w < 0f))
+            errors.Add("weather.weights cannot be negative.");
         return errors;
     }
 

@@ -14,7 +14,7 @@ public partial class SaveManager : Node
 
     /// <summary>File used by save/load. Change it for save slots or to keep tests away from the real save.</summary>
     public string SavePath { get; set; } = DefaultSavePath;
-    public const int SaveVersion = 4;
+    public const int SaveVersion = 5;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -90,6 +90,7 @@ public partial class SaveManager : Node
         // v2 -> v3: adds reputation and total_tips. Missing values load as a new driver
         // (five starting 5-star ratings) and 0 tips, so nothing to convert.
         // v3 -> v4: adds total_violations and total_fines (default 0).
+        // v4 -> v5: adds fuel (missing = full tank) and total_fuel_spent (default 0).
         data.Version = SaveVersion;
         return data;
     }

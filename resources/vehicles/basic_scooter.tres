@@ -13,3 +13,7 @@ CoastDeceleration = 260.0
 TurnSpeed = 3.0
 Grip = 9.0
 HandbrakeGrip = 2.2
+FuelCapacity = 4.0
+FuelPerKm = 0.08
+IdleFuelPerMinute = 0.02
+PushSpeed = 70.0

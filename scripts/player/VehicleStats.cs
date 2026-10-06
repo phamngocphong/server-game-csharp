@@ -4,7 +4,7 @@ namespace ShipperSimulator;
 
 /// <summary>
 /// Handling data for a vehicle. Upgrades / new bikes = new or modified
-/// VehicleStats resources (resources/vehicles/). Fuel capacity etc. go here later.
+/// VehicleStats resources (resources/vehicles/).
 /// </summary>
 [GlobalClass]
 public partial class VehicleStats : Resource
@@ -27,4 +27,14 @@ public partial class VehicleStats : Resource
     [Export] public float Grip { get; set; } = 9f;
     /// <summary>Grip while holding the handbrake (drifting).</summary>
     [Export] public float HandbrakeGrip { get; set; } = 2.2f;
+
+    [ExportGroup("Fuel")]
+    /// <summary>Tank size in liters.</summary>
+    [Export] public float FuelCapacity { get; set; } = 4f;
+    /// <summary>Liters per km driven (before the weather multiplier).</summary>
+    [Export] public float FuelPerKm { get; set; } = 0.08f;
+    /// <summary>Liters per minute with the engine running, even when standing still.</summary>
+    [Export] public float IdleFuelPerMinute { get; set; } = 0.02f;
+    /// <summary>Top speed when the tank is empty and the rider pushes the bike (px/s).</summary>
+    [Export] public float PushSpeed { get; set; } = 70f;
 }

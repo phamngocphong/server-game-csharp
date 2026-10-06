@@ -118,5 +118,17 @@
       "bus": 0.5
     },
     "light_chance": 0.5
+  },
+  "fuel": {
+    "price_per_liter": 2.4,
+    "stations": -1
+  },
+  "weather": {
+    "weights": {
+      "sunny": 2,
+      "cloudy": 3,
+      "rain": 2,
+      "storm": 0.5
+    }
   }
 }

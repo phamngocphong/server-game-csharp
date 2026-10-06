@@ -37,6 +37,16 @@ public partial class CityRegionData : Resource
 	/// <summary>Share (0-1) of inner intersections that get traffic lights.</summary>
 	[Export(PropertyHint.Range, "0,1,0.05")] public float TrafficLightChance { get; set; } = 0.45f;
 
+	[ExportGroup("Fuel")]
+	/// <summary>Money per liter at the gas stations.</summary>
+	[Export] public float FuelPrice { get; set; } = 2.5f;
+	/// <summary>Number of gas stations; -1 = automatic (about one per 12 blocks, at least 3).</summary>
+	[Export] public int FuelStationCount { get; set; } = -1;
+
+	[ExportGroup("Weather")]
+	/// <summary>Chance per WeatherData.WeatherId; missing ids use the weather's DefaultWeight.</summary>
+	[Export] public Godot.Collections.Dictionary<string, float> WeatherWeights { get; set; } = new();
+
 	[ExportGroup("Content")]
 	/// <summary>Place name used for addresses next to water blocks.</summary>
 	[Export] public string WaterPlaceName { get; set; } = "Waterfront";

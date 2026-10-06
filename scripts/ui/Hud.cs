@@ -3,7 +3,7 @@ using Godot;
 namespace ShipperSimulator;
 
 /// <summary>
-/// Always-on HUD: wallet, driver rating, current city and district, active job (with its countdown
+/// Always-on HUD: wallet, driver rating, current city, district and weather, fuel gauge, active job (with its countdown
 /// for timed jobs), interaction prompt, speedometer and toast notifications.
 /// </summary>
 public partial class Hud : Control
@@ -24,6 +24,10 @@ public partial class Hud : Control
     private Control _promptPanel = null!;
     private Label _promptLabel = null!;
     private Label _speedLabel = null!;
+    private ProgressBar _fuelBar = null!;
+    private Label _fuelLabel = null!;
+    private Label _stationLabel = null!;
+    private Label _weatherLabel = null!;
     private Control _toastPanel = null!;
     private Label _toastLabel = null!;
     private ColorRect _flashRect = null!;
@@ -50,6 +54,10 @@ public partial class Hud : Control
         _promptPanel = GetNode<Control>("%PromptPanel");
         _promptLabel = GetNode<Label>("%PromptLabel");
         _speedLabel = GetNode<Label>("%SpeedLabel");
+        _fuelBar = GetNode<ProgressBar>("%FuelBar");
+        _fuelLabel = GetNode<Label>("%FuelLabel");
+        _stationLabel = GetNode<Label>("%StationLabel");
+        _weatherLabel = GetNode<Label>("%WeatherLabel");
         _toastPanel = GetNode<Control>("%ToastPanel");
         _toastLabel = GetNode<Label>("%ToastLabel");
         _flashRect = GetNode<ColorRect>("%FlashRect");
@@ -66,6 +74,7 @@ public partial class Hud : Control
         bus.NotificationRequested += ShowToast;
         bus.PlayerCrashed += OnPlayerCrashed;
         bus.TrafficFined += OnTrafficFined;
+        bus.WeatherChanged += OnWeatherChanged;
         _cancelButton.Pressed += OnCancelPressed;
 
         _activeJobPanel.Hide();
@@ -75,6 +84,7 @@ public partial class Hud : Control
         OnBalanceChanged(GameManager.Instance.Wallet.Balance, 0);
         RefreshStats();
         RefreshRating();
+        OnWeatherChanged(""); // the Weather node is ready before the HUD and already picked one
     }
 
     public override void _ExitTree()
@@ -93,6 +103,7 @@ public partial class Hud : Control
         bus.NotificationRequested -= ShowToast;
         bus.PlayerCrashed -= OnPlayerCrashed;
         bus.TrafficFined -= OnTrafficFined;
+        bus.WeatherChanged -= OnWeatherChanged;
     }
 
     public override void _Process(double delta)
@@ -111,6 +122,7 @@ public partial class Hud : Control
             _speedLabel.Modulate = Colors.White;
         }
         _cityLabel.Text = GameManager.Instance.CityMap?.Region.DisplayName ?? "";
+        UpdateFuel(player);
         _districtLabel.Text = GameManager.Instance.GetCurrentDistrict()?.DisplayName ?? "";
         if (_hasTarget && _activeJobPanel.Visible)
         {
@@ -143,6 +155,29 @@ public partial class Hud : Control
 
     private void RefreshStats() =>
         _deliveriesLabel.Text = $"Deliveries: {GameManager.Instance.Stats.TotalDeliveries}";
+
+    private void UpdateFuel(Player player)
+    {
+        var ratio = player.FuelRatio;
+        _fuelBar.Value = ratio;
+        _fuelBar.Modulate = ratio > 0.25f ? new Color(0.55f, 1f, 0.6f)
+            : ratio > 0.1f ? new Color(1f, 0.75f, 0.3f)
+            : new Color(1f, 0.35f, 0.3f);
+        _fuelLabel.Text = player.IsOutOfFuel
+            ? "EMPTY - push!"
+            : $"{player.Fuel.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} L";
+
+        var station = ratio <= 0.3f ? GameManager.Instance.CityMap?.GetNearestGasStation(player.GlobalPosition) : null;
+        _stationLabel.Visible = station != null;
+        if (station != null)
+            _stationLabel.Text = $"Nearest gas station: {GameManager.FormatDistance(JobGenerator.RouteDistance(player.GlobalPosition, station.GlobalPosition))}";
+    }
+
+    private void OnWeatherChanged(string weatherName)
+    {
+        var weather = GameManager.Instance.Weather?.Current;
+        _weatherLabel.Text = weather == null ? "" : $"{weather.DisplayName}: {weather.EffectSummary()}";
+    }
 
     private void OnPlayerCrashed(string vehicleName, int collisionScore, float stunSeconds) =>
         ShowToast($"Crashed into a {vehicleName}! (impact {collisionScore}) - stunned {stunSeconds.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} s");

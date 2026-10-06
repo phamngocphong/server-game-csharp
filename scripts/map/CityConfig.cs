@@ -20,6 +20,21 @@ public sealed class CityConfig
     public List<DistrictConfig> Districts { get; set; } = new();
     public CityStreetsConfig Streets { get; set; } = new();
     public CityTrafficConfig Traffic { get; set; } = new();
+    public CityFuelConfig Fuel { get; set; } = new();
+    public CityWeatherConfig Weather { get; set; } = new();
+}
+
+public sealed class CityFuelConfig
+{
+    public float PricePerLiter { get; set; } = 2.5f;
+    /// <summary>Number of gas stations; -1 = automatic (about one per 12 blocks, at least 3).</summary>
+    public int Stations { get; set; } = -1;
+}
+
+public sealed class CityWeatherConfig
+{
+    /// <summary>Relative chance per weather id (sunny, cloudy, rain, storm...); missing ids use their default.</summary>
+    public Dictionary<string, float> Weights { get; set; } = new();
 }
 
 public sealed class CityTrafficConfig

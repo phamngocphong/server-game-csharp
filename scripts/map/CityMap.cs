@@ -8,6 +8,7 @@ namespace ShipperSimulator;
 /// - roads, sidewalks, parks and water are drawn in _Draw()
 /// - buildings and trees are <see cref="Building"/> (StaticBody2D) obstacles; water blocks are plain StaticBody2D
 /// - every block side gets a curbside <see cref="DeliveryLocation"/> for the job system
+/// - a few of those curbside spots become <see cref="GasStation"/>s (and are not used for jobs)
 /// </summary>
 public partial class CityMap : Node2D
 {
@@ -37,8 +38,10 @@ public partial class CityMap : Node2D
     public int ActiveSeed { get; private set; }
 
     public IReadOnlyList<DeliveryLocation> Locations => _locations;
+    public IReadOnlyList<GasStation> GasStations => _gasStations;
 
     private readonly List<DeliveryLocation> _locations = new();
+    private readonly List<GasStation> _gasStations = new();
     private readonly List<Block> _blocks = new();
     private readonly RandomNumberGenerator _rng = new();
     private readonly DistrictData _fallbackDistrict = new();
@@ -66,6 +69,7 @@ public partial class CityMap : Node2D
                 BuildBlock(new Vector2I(bx, by));
         }
         BuildBoundaries();
+        BuildGasStations();
         QueueRedraw();
         EmitSignal(SignalName.MapBuilt);
     }
@@ -102,6 +106,22 @@ public partial class CityMap : Node2D
 
     public DistrictData GetDistrictAtPosition(Vector2 position) => DistrictFor(GetCellAtPosition(position));
 
+    public GasStation? GetNearestGasStation(Vector2 position)
+    {
+        GasStation? best = null;
+        var bestDistance = float.MaxValue;
+        foreach (var station in _gasStations)
+        {
+            var d = JobGenerator.RouteDistance(position, station.GlobalPosition);
+            if (d < bestDistance)
+            {
+                bestDistance = d;
+                best = station;
+            }
+        }
+        return best;
+    }
+
     public List<DeliveryLocation> GetLocationsInRange(Vector2 origin, float minRadius, float maxRadius)
     {
         var result = new List<DeliveryLocation>();
@@ -120,6 +140,7 @@ public partial class CityMap : Node2D
     {
         _locations.Clear();
         _blocks.Clear();
+        _gasStations.Clear();
         _obstaclesRoot?.QueueFree();
         _obstaclesRoot = null;
     }
@@ -252,6 +273,55 @@ public partial class CityMap : Node2D
                 StreetName = street,
                 DisplayName = $"{place}, {_rng.RandiRange(1, 299)} {street}",
             });
+        }
+    }
+
+    /// <summary>
+    /// Turns well-spread curbside addresses into gas stations. Uses its own RNG (from the seed)
+    /// so adding stations does not change the rest of the layout.
+    /// </summary>
+    private void BuildGasStations()
+    {
+        var count = Region.FuelStationCount >= 0
+            ? Region.FuelStationCount
+            : Mathf.Max(3, Region.GridSize.X * Region.GridSize.Y / 12);
+        count = Mathf.Min(count, _locations.Count / 4);
+        if (count <= 0)
+            return;
+
+        var rng = new RandomNumberGenerator { Seed = (ulong)ActiveSeed * 17UL + 3UL };
+        var chosen = new List<DeliveryLocation> { _locations[rng.RandiRange(0, _locations.Count - 1)] };
+        while (chosen.Count < count)
+        {
+            // Farthest-point sampling: the next station goes where stations are scarcest.
+            DeliveryLocation? best = null;
+            var bestScore = -1f;
+            foreach (var loc in _locations)
+            {
+                if (chosen.Contains(loc))
+                    continue;
+                var nearest = float.MaxValue;
+                foreach (var c in chosen)
+                    nearest = Mathf.Min(nearest, JobGenerator.RouteDistance(loc.Position, c.Position));
+                var score = nearest * rng.RandfRange(0.85f, 1f);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = loc;
+                }
+            }
+            if (best == null)
+                break;
+            chosen.Add(best);
+        }
+
+        foreach (var loc in chosen)
+        {
+            _locations.Remove(loc);
+            var station = new GasStation { Name = $"GasStation{_gasStations.Count}" };
+            station.Setup($"Gas Station, {loc.StreetName}", loc.Position);
+            _obstaclesRoot!.AddChild(station);
+            _gasStations.Add(station);
         }
     }
 
