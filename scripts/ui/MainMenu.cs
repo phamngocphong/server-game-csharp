@@ -11,7 +11,7 @@ namespace ShipperSimulator;
 /// </summary>
 public partial class MainMenu : Control
 {
-    [Export(PropertyHint.File, "*.tscn")] public string GameScenePath { get; set; } = "res://scenes/main.tscn";
+    [Export(PropertyHint.File, "*.tscn")] public string GameScenePath { get; set; } = GameManager.GameScenePath;
 
     private Button _continueButton = null!;
     private Button _newGameButton = null!;

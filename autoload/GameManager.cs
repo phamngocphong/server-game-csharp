@@ -17,6 +17,8 @@ public partial class GameManager : Node
 	public const float SpeedToKmh = 0.12f;
 	public const string CurrencySymbol = "$";
 	private const double AutosaveInterval = 60.0;
+	/// <summary>Gameplay scene kept loaded for the whole session; see <see cref="_gameScene"/>.</summary>
+	public const string GameScenePath = "res://scenes/main.tscn";
 
 	public static GameManager Instance { get; private set; } = null!;
 
@@ -41,11 +43,23 @@ public partial class GameManager : Node
 
 	private double _autosaveTimer;
 
+	/// <summary>
+	/// Keeps the gameplay scene, and through it every C#-scripted .tres it uses (JobTemplate,
+	/// TrafficVehicleData, WeatherData, VehicleStats), natively referenced for the app's lifetime.
+	/// Without this, freeing the scene leaves those resources held only by their C# wrapper:
+	/// Godot makes the GC handle weak but keeps the object in ResourceCache. The next load of
+	/// main.tscn re-references the cached object on the main thread (weak -> strong handle swap)
+	/// while the GC finalizer thread may be disposing it, which crashes with
+	/// "gchandle.is_released()" or "Handle is not initialized" (an engine race).
+	/// </summary>
+	private PackedScene? _gameScene;
+
 	public override void _EnterTree() => Instance = this;
 
 	public override void _Ready()
 	{
 		ProcessMode = ProcessModeEnum.Always;
+		_gameScene = GD.Load<PackedScene>(GameScenePath);
 		Wallet.BalanceChanged += OnWalletBalanceChanged;
 		Stats.Changed += OnStatsChanged;
 		Reputation.Changed += OnReputationChanged;
