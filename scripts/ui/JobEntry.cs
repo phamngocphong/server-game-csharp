@@ -10,6 +10,7 @@ public partial class JobEntry : PanelContainer
     public JobData? Job { get; private set; }
 
     private Label _packageLabel = null!;
+    private Label _tagLabel = null!;
     private Label _routeLabel = null!;
     private Label _detailLabel = null!;
     private Label _timeLabel = null!;
@@ -19,6 +20,7 @@ public partial class JobEntry : PanelContainer
     public override void _Ready()
     {
         _packageLabel = GetNode<Label>("%PackageLabel");
+        _tagLabel = GetNode<Label>("%TagLabel");
         _routeLabel = GetNode<Label>("%RouteLabel");
         _detailLabel = GetNode<Label>("%DetailLabel");
         _timeLabel = GetNode<Label>("%TimeLabel");
@@ -40,6 +42,18 @@ public partial class JobEntry : PanelContainer
     {
         var job = Job!;
         _packageLabel.Text = job.Title;
+        _tagLabel.Visible = job.Tier != JobData.JobTier.Normal;
+        switch (job.Tier)
+        {
+            case JobData.JobTier.Premium:
+                _tagLabel.Text = $"PREMIUM  -  close by, x{JobGenerator.PremiumRewardMultiplier:0} pay";
+                _tagLabel.AddThemeColorOverride("font_color", new Color(1f, 0.82f, 0.25f));
+                break;
+            case JobData.JobTier.Special:
+                _tagLabel.Text = $"SPECIAL  -  long trip, low pay, no time limit, +{job.RatingBonus} five-star reviews";
+                _tagLabel.AddThemeColorOverride("font_color", new Color(0.8f, 0.6f, 1f));
+                break;
+        }
         _packageLabel.AddThemeColorOverride("font_color", job.PackageColor);
         _routeLabel.Text = $"From: {job.PickupName} ({job.PickupDistrict})\nTo: {job.DeliveryName} ({job.DeliveryDistrict})";
         _detailLabel.Text = $"Pickup {GameManager.FormatDistance(job.DistanceToPickup)} away  -  Trip {GameManager.FormatDistance(job.Distance)}";

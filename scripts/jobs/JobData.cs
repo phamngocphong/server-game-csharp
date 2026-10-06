@@ -9,12 +9,24 @@ namespace ShipperSimulator;
 [GlobalClass]
 public partial class JobData : Resource
 {
+    public enum JobTier
+    {
+        Normal,
+        /// <summary>Rare: pickup close by, short trip, double pay.</summary>
+        Premium,
+        /// <summary>Rare: very long trip, half pay, untimed, but the customer adds extra 5-star reviews.</summary>
+        Special,
+    }
+
     [Export] public string Id { get; set; } = "";
     [Export] public string TemplateId { get; set; } = "";
     [Export] public string PackageName { get; set; } = "";
     [Export] public Color PackageColor { get; set; } = Colors.White;
     [Export] public JobTemplate.CargoKind Cargo { get; set; }
     [Export] public string CustomerName { get; set; } = "";
+    [Export] public JobTier Tier { get; set; }
+    /// <summary>Extra 5-star reviews the customer adds on delivery (special jobs).</summary>
+    [Export] public int RatingBonus { get; set; }
 
     [Export] public string PickupName { get; set; } = "";
     [Export] public string PickupDistrict { get; set; } = "";
@@ -46,5 +58,17 @@ public partial class JobData : Resource
     public int TipAmount => HasTip ? Mathf.Max(1, Mathf.RoundToInt(Reward * TipShare)) : 0;
     public bool IsPassenger => Cargo == JobTemplate.CargoKind.Passenger;
     /// <summary>Package name plus customer, e.g. "Passenger Ride - Ms. Lan".</summary>
-    public string Title => CustomerName.Length > 0 ? $"{PackageName} - {CustomerName}" : PackageName;
+    public string Title
+    {
+        get
+        {
+            var name = CustomerName.Length > 0 ? $"{PackageName} - {CustomerName}" : PackageName;
+            return Tier switch
+            {
+                JobTier.Premium => $"Premium {name}",
+                JobTier.Special => $"Special: {name}",
+                _ => name,
+            };
+        }
+    }
 }

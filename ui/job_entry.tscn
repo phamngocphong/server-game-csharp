@@ -21,6 +21,14 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 18
 text = "Package"
 
+[node name="TagLabel" type="Label" parent="HBox/Info"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_font_sizes/font_size = 13
+text = "PREMIUM"
+autowrap_mode = 3
+
 [node name="RouteLabel" type="Label" parent="HBox/Info"]
 unique_name_in_owner = true
 layout_mode = 2

@@ -222,6 +222,10 @@ Every finished or failed job gets a customer rating:
 - **Where it shows:** the HUD shows the stars, and the Job Board shows the counters (on time, late, failed, cancelled).
 - **A lower rating means fewer high-paying jobs:**
   - **Pay multiplier:** every reward is multiplied by a factor from ×0.80 at 1 star to ×1.10 at 5 stars (`GameManager.GetRewardMultiplier()`).
+  - **Job quality:** every board is filled from a pool of 3× as many candidate jobs, ranked by **pay per km ridden** (to the pickup and then the trip). Each slot is drawn from that ranking with a skew set by your rating. At 5 stars you mostly get the top: close and well paid. At 3 stars the draw is even. At 1 star you mostly get the bottom: far pickups and poor pay.
+  - **Rare premium jobs** (gold **PREMIUM** tag): the pickup is one of the 3 closest, the trip is short, and the pay is **×2**. Each slot has a 2% chance at 1 star, rising to 6% at 5 stars.
+  - **Rare special jobs** (purple **SPECIAL** tag): a **very long trip**, at least 4 km or 1.5× the job type's longest trip (or the farthest address on small maps). They pay **×0.5** and have no time limit, but the customer adds **2 extra 5-star reviews** on top of their own. Each slot has a 12% chance at 1 star, falling to 6% at 5 stars, so they are a way back from a bad rating. Example: a 1.0-star driver goes to 1.6 after one special job.
+  - Premium and special jobs are listed first on the board, and their titles start with "Premium" or "Special:".
   - **Job types:** each `JobTemplate` has a `MinRating`. At or below that rating the job type is never offered. Between `MinRating` and 5 stars it appears proportionally less often. The defaults are Fragile Electronics 4.5 and Passenger Ride 3.5, and everything else is open to all drivers. The Job Board lists the locked and rarer types.
 
 ## Folder structure
@@ -275,6 +279,7 @@ All C# code is in the `ShipperSimulator` namespace. Godot requires each script f
   - **Shop stock:** `VehicleShop.GenerateOffers(catalog, rotationKey)` is deterministic. It uses `System.Random`, seeded with an FNV-1a hash of the key (`"2026-10-06#1"`), because `string.GetHashCode` differs between runs. Set `ShopPanel.RotationOverride` in the inspector to preview any rotation.
   - **Buying:** `GameManager.BuyVehicle()` charges the price minus the trade-in, marks the offer as sold for that rotation, switches vehicles with a full tank and saves.
   - **Options table:** the options, their ranges and their prices live in `VehiclePerks.All`.
+- **Job quality and tiers:** `JobGenerator.GenerateJobs()` builds a pool (`CandidateFactor` × slots), sorts it by `Goodness()` and picks with `index = random^skew × poolSize`, where `skew = 2^((rating - 3) / 2)`. For each slot, `PremiumChance(rating)` and `SpecialChance(rating)` are rolled first, then `BuildPremium()` / `BuildSpecial()` produce the job. `JobData.Tier` and `RatingBonus` mark them. Special jobs clear their time limits, and `GameManager.CompleteDelivery()` calls `Reputation.RecordBonus()`. The multipliers, chances and distances are the constants at the top of `JobGenerator`.
 - **Phone and refreshes:**
   - **Jobs per board:** `GameManager.Phone` (a `PhoneData` from `PhoneCatalog`) sets how many jobs `JobManager.RefreshJobs()` generates (`JobSlots` × the period's `JobCountMultiplier`).
   - **Limited refreshes:** only the board's Refresh button (`EventBus.JobRefreshRequested` → `JobManager.OnRefreshRequested`) spends `GameManager.TryUseRefresh()`. The counter is tied to a local date (`yyyy-MM-dd`) and resets when the date changes. `GameManager.TodayOverride` fakes the date for testing.

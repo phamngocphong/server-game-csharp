@@ -55,6 +55,13 @@ public sealed class Reputation
         return AddRating(late ? StarsLate : StarsOnTime);
     }
 
+    /// <summary>Extra 5-star reviews (special jobs).</summary>
+    public void RecordBonus(int count)
+    {
+        for (var i = 0; i < count; i++)
+            AddRating(5);
+    }
+
     public int RecordFailed()
     {
         TotalFailed++;

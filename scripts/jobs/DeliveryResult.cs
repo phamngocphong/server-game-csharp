@@ -21,6 +21,8 @@ public partial class DeliveryResult : RefCounted
 	public int Tip { get; set; }
 	/// <summary>Stars (1-5) the customer gave for this job.</summary>
 	public int CustomerStars { get; set; }
+	/// <summary>Extra 5-star reviews from a special job.</summary>
+	public int RatingBonus { get; set; }
 	public float RatingBefore { get; set; }
 	public float RatingAfter { get; set; }
 	public double ElapsedTime { get; set; }

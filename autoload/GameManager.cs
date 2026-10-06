@@ -373,6 +373,8 @@ public partial class GameManager : Node
 
 		var ratingBefore = Reputation.Rating;
 		var stars = Reputation.RecordDelivered(late);
+		if (job.RatingBonus > 0)
+			Reputation.RecordBonus(job.RatingBonus);
 
 		var result = new DeliveryResult
 		{
@@ -382,6 +384,7 @@ public partial class GameManager : Node
 			LatePenaltyAmount = job.Reward - reward,
 			Tip = tip,
 			CustomerStars = stars,
+			RatingBonus = job.RatingBonus,
 			RatingBefore = ratingBefore,
 			RatingAfter = Reputation.Rating,
 			DeliveryTime = deliveryTime,

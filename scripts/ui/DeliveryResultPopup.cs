@@ -65,6 +65,8 @@ public partial class DeliveryResultPopup : Control
         else if (job.HasTip && !result.WasLate)
             AddRow("Tip", $"none (needed {GameManager.FormatTime(job.TipTimeLimit)})", new Color(1f, 1f, 1f, 0.6f));
         AddStarsRow("Customer rating", result.CustomerStars);
+        if (result.RatingBonus > 0)
+            AddRow("Bonus", $"+{result.RatingBonus} extra five-star reviews (special job)", new Color(0.8f, 0.6f, 1f));
         AddRow("Your rating", $"{GameManager.FormatRating(result.RatingBefore)} -> {GameManager.FormatRating(result.RatingAfter)}");
         AddRow("Total deliveries", result.TotalDeliveries.ToString());
 
