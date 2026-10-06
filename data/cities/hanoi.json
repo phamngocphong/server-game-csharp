@@ -130,5 +130,9 @@
       "rain": 2,
       "storm": 0.5
     }
+  },
+  "rest": {
+    "price": 7,
+    "stops": -1
   }
 }

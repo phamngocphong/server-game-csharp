@@ -116,16 +116,25 @@ public partial class JobManager : Node
             return;
         var origin = GameManager.Instance.GetPlayerPosition();
         _lastOrigin = origin;
-        _availableJobs = _generator.GenerateJobs(origin, JobsPerBoard);
+        var period = GameManager.Instance.Period;
+        var count = Mathf.Max(1, Mathf.RoundToInt(JobsPerBoard * (period?.JobCountMultiplier ?? 1f)));
+        _availableJobs = _generator.GenerateJobs(origin, count);
         EmitJobsUpdated();
-        Bus.EmitSignal(EventBus.SignalName.JobBoardNoticeChanged,
-            _generator.DescribeRatingLimits(GameManager.Instance.Reputation.Rating));
+        var notice = _generator.DescribeRatingLimits(GameManager.Instance.Reputation.Rating);
+        if (period != null)
+            notice = $"{period.DisplayName}: {period.Summary}" + (notice.Length > 0 ? "\n" + notice : "");
+        Bus.EmitSignal(EventBus.SignalName.JobBoardNoticeChanged, notice);
     }
 
     public void AcceptJob(JobData job)
     {
         if (CurrentState != State.Idle || !_availableJobs.Contains(job))
             return;
+        if (GameManager.Instance.Player?.IsExhausted == true)
+        {
+            Bus.EmitSignal(EventBus.SignalName.NotificationRequested, "Too tired to take a job - rest first");
+            return;
+        }
         _generator.UpdatePickupTimeLimit(job, GameManager.Instance.GetPlayerPosition());
         ActiveJob = job;
         _availableJobs.Clear();

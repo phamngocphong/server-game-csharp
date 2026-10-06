@@ -30,6 +30,8 @@ public partial class WeatherSystem : Node
     private readonly RandomNumberGenerator _rng = new();
     private CanvasModulate _tint = null!;
     private RainOverlay _rain = null!;
+    /// <summary>Weather part of the world tint; the daylight color is multiplied in every frame.</summary>
+    private Color _weatherTint = Colors.White;
 
     public override void _Ready()
     {
@@ -49,7 +51,8 @@ public partial class WeatherSystem : Node
         }
         GameManager.Instance.Weather = this;
         SetWeather(Pick(null), announce: false);
-        _tint.Color = Current.Tint;
+        _weatherTint = Current.Tint;
+        _tint.Color = _weatherTint * Daylight();
         _rain.Intensity = Current.RainIntensity;
     }
 
@@ -69,9 +72,12 @@ public partial class WeatherSystem : Node
             SetWeather(Pick(Current), announce: true);
 
         var fade = Mathf.Clamp(FadeSpeed * dt, 0f, 1f);
-        _tint.Color = _tint.Color.Lerp(Current.Tint, fade);
+        _weatherTint = _weatherTint.Lerp(Current.Tint, fade);
+        _tint.Color = _weatherTint * Daylight();
         _rain.Intensity = Mathf.MoveToward(_rain.Intensity, Current.RainIntensity, fade);
     }
+
+    private static Color Daylight() => GameManager.Instance.DayCycle?.LightColor ?? Colors.White;
 
     /// <summary>Forces a weather by id (debugging, events, tests).</summary>
     public bool ForceWeather(string weatherId)

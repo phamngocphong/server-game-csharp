@@ -5,7 +5,9 @@ using Godot;
 namespace ShipperSimulator;
 
 /// <summary>
-/// Spawns the AI road users when the gameplay scene starts. How many and which
+/// Spawns the AI road users when the gameplay scene starts, then keeps their number at the
+/// city's count times the part of the day's TrafficMultiplier (rush hour, quiet nights),
+/// adding or removing one vehicle at a time out of the player's sight. How many and which
 /// kinds come from the city's "traffic" JSON section (<see cref="CityRegionData.TrafficCount"/>,
 /// <see cref="CityRegionData.TrafficWeights"/>); the kinds themselves are
 /// <see cref="TrafficVehicleData"/> resources in resources/traffic/.
@@ -16,6 +18,11 @@ public partial class TrafficManager : Node2D
     public const float AutoDensity = 0.6f;
     /// <summary>No vehicle spawns closer than this to the player's spawn point.</summary>
     private const float SpawnClearance = 450f;
+    /// <summary>Vehicles appear and disappear at least this far from the player.</summary>
+    private const float OffscreenDistance = 900f;
+    private const double DensityCheckInterval = 2.0;
+    /// <summary>Most vehicles added or removed per density check.</summary>
+    private const int MaxDensityStep = 3;
 
     [Export] public CityMap Map { get; set; } = null!;
     /// <summary>Optional: vehicles stop at its red lights.</summary>
@@ -26,14 +33,49 @@ public partial class TrafficManager : Node2D
 
     private readonly List<TrafficVehicle> _vehicles = new();
     private readonly RandomNumberGenerator _rng = new();
+    private int _baseCount;
+    private double _densityTimer;
 
     public override void _Ready()
     {
         _rng.Randomize();
         if (Map?.Region == null || VehicleTypes.Count == 0)
             return;
-        Spawn(VehicleCount());
+        _baseCount = VehicleCount();
+        Spawn(TargetCount(), Map.GetSpawnPosition(), SpawnClearance);
     }
+
+    public override void _Process(double delta)
+    {
+        _densityTimer += delta;
+        if (_densityTimer < DensityCheckInterval || _baseCount == 0)
+            return;
+        _densityTimer = 0.0;
+        _vehicles.RemoveAll(v => !IsInstanceValid(v) || v.IsQueuedForDeletion());
+        var player = GameManager.Instance.GetPlayerPosition();
+        var target = TargetCount();
+        if (_vehicles.Count < target)
+        {
+            Spawn(Mathf.Min(target, _vehicles.Count + MaxDensityStep), player, OffscreenDistance);
+        }
+        else if (_vehicles.Count > target)
+        {
+            // Remove the farthest vehicles that are out of sight.
+            var removable = _vehicles
+                .Where(v => v.Position.DistanceTo(player) > OffscreenDistance)
+                .OrderByDescending(v => v.Position.DistanceTo(player))
+                .Take(Mathf.Min(MaxDensityStep, _vehicles.Count - target))
+                .ToList();
+            foreach (var vehicle in removable)
+            {
+                _vehicles.Remove(vehicle);
+                vehicle.QueueFree();
+            }
+        }
+    }
+
+    private int TargetCount() =>
+        Mathf.RoundToInt(_baseCount * (GameManager.Instance.Period?.TrafficMultiplier ?? 1f));
 
     private int VehicleCount()
     {
@@ -43,14 +85,14 @@ public partial class TrafficManager : Node2D
             : Mathf.RoundToInt(region.GridSize.X * region.GridSize.Y * AutoDensity);
     }
 
-    private void Spawn(int count)
+    /// <summary>Adds vehicles until there are <paramref name="count"/>, none within <paramref name="clearance"/> of <paramref name="avoid"/>.</summary>
+    private void Spawn(int count, Vector2 avoid, float clearance)
     {
         var weights = VehicleTypes.Select(WeightOf).ToList();
         var total = weights.Sum();
         if (total <= 0f)
             return;
 
-        var avoid = Map.GetSpawnPosition();
         var grid = Map.Region.GridSize;
         Vector2I[] dirs = { Vector2I.Right, Vector2I.Left, Vector2I.Down, Vector2I.Up };
         var attempts = 0;
@@ -66,7 +108,7 @@ public partial class TrafficManager : Node2D
             var vehicle = new TrafficVehicle { Name = $"{data.VehicleId}_{_vehicles.Count}" };
             // Spawn well before the next stop line, so no vehicle starts inside a red light.
             vehicle.Setup(data, Map, Lights, from, dir, _rng.RandfRange(0.1f, 0.6f), _rng);
-            if (vehicle.Position.DistanceTo(avoid) < SpawnClearance || Overlaps(vehicle))
+            if (vehicle.Position.DistanceTo(avoid) < clearance || Overlaps(vehicle))
             {
                 vehicle.Free();
                 continue;

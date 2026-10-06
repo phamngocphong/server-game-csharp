@@ -43,6 +43,12 @@ public partial class CityRegionData : Resource
 	/// <summary>Number of gas stations; -1 = automatic (about one per 12 blocks, at least 3).</summary>
 	[Export] public int FuelStationCount { get; set; } = -1;
 
+	[ExportGroup("Rest")]
+	/// <summary>Price of a meal and rest at a rest stop.</summary>
+	[Export] public int RestPrice { get; set; } = 8;
+	/// <summary>Number of rest stops; -1 = automatic (about one per 16 blocks, at least 2).</summary>
+	[Export] public int RestStopCount { get; set; } = -1;
+
 	[ExportGroup("Weather")]
 	/// <summary>Chance per WeatherData.WeatherId; missing ids use the weather's DefaultWeight.</summary>
 	[Export] public Godot.Collections.Dictionary<string, float> WeatherWeights { get; set; } = new();

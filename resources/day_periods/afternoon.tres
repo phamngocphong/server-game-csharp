@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TimePeriodData" format=3]
+
+[ext_resource type="Script" path="res://scripts/daycycle/TimePeriodData.cs" id="1_period"]
+
+[resource]
+script = ExtResource("1_period")
+PeriodId = "afternoon"
+DisplayName = "Afternoon"
+StartHour = 14.0
+Summary = "normal conditions"
+JobCountMultiplier = 1.0
+RewardMultiplier = 1.0
+TemplateWeights = Dictionary[String, float]({})
+FuelMultiplier = 1.0
+FatigueMultiplier = 1.0
+TrafficMultiplier = 1.0

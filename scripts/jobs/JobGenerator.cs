@@ -142,7 +142,9 @@ public sealed class JobGenerator
     private JobTemplate PickTemplate()
     {
         var rating = GameManager.Instance.Reputation.Rating;
-        float WeightOf(JobTemplate t) => Mathf.Max(t.Weight, 0f) * t.RatingFactor(rating);
+        var period = GameManager.Instance.Period;
+        float WeightOf(JobTemplate t) =>
+            Mathf.Max(t.Weight, 0f) * t.RatingFactor(rating) * (period?.TemplateWeight(t.TemplateId) ?? 1f);
 
         var total = _templates.Sum(WeightOf);
         if (total <= 0f)

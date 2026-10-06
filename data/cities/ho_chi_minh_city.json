@@ -162,5 +162,9 @@
       "rain": 2.5,
       "storm": 0.5
     }
+  },
+  "rest": {
+    "price": 8,
+    "stops": -1
   }
 }

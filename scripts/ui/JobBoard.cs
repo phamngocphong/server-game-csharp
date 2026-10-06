@@ -156,7 +156,7 @@ public partial class JobBoard : Control
             $"Tips: {GameManager.FormatMoney(stats.TotalTips)}\nBest: {GameManager.FormatMoney(stats.BestReward)}   " +
             $"Play time: {GameManager.FormatTime(stats.PlayTime)}\n" +
             $"Red lights run: {stats.TotalViolations}   Fines: {GameManager.FormatMoney(stats.TotalFines)}   " +
-            $"Fuel: {GameManager.FormatMoney(stats.TotalFuelSpent)}";
+            $"Fuel: {GameManager.FormatMoney(stats.TotalFuelSpent)}   Food & rest: {GameManager.FormatMoney(stats.TotalRestSpent)}";
 
         var lines = GameManager.Instance.Wallet.History
             .Take(HistoryLines)

@@ -19,6 +19,8 @@ public sealed class GameSaveData
     public ReputationSaveData Reputation { get; set; } = new();
     /// <summary>Liters in the tank; null (older saves) = full.</summary>
     public float? Fuel { get; set; }
+    /// <summary>Player fatigue 0-100.</summary>
+    public float Fatigue { get; set; }
     /// <summary>Current vehicle and its options; null (older saves) = the starter vehicle.</summary>
     public VehicleSaveData? Vehicle { get; set; }
     public ShopSaveData Shop { get; set; } = new();
@@ -43,6 +45,7 @@ public sealed class StatsSaveData
     public int TotalViolations { get; set; }
     public int TotalFines { get; set; }
     public int TotalFuelSpent { get; set; }
+    public int TotalRestSpent { get; set; }
     public float TotalDistance { get; set; }
     public double PlayTime { get; set; }
 }

@@ -40,6 +40,8 @@ public partial class EventBus : Node
 	[Signal] public delegate void PlayerCrashedEventHandler(string vehicleName, int collisionScore, float stunSeconds);
 	/// <summary>The player was fined <paramref name="amount"/>; <paramref name="multiplier"/> > 1 for repeat offences.</summary>
 	[Signal] public delegate void TrafficFinedEventHandler(int amount, string reason, int multiplier);
+	/// <summary>A new part of the day started (morning, midday...); also sent once at scene start.</summary>
+	[Signal] public delegate void PeriodChangedEventHandler(string periodName);
 	/// <summary>The weather changed (also sent once when the gameplay scene starts).</summary>
 	[Signal] public delegate void WeatherChangedEventHandler(string weatherName);
 	/// <summary>Empty text hides the prompt.</summary>

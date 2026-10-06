@@ -169,6 +169,28 @@ The weather changes every 1-3 minutes. Each city weights the kinds differently t
 - **Pay:** the pay bonus goes through `GameManager.GetRewardMultiplier()`, so jobs on the board pay more while it rains.
 - **Display:** the HUD shows the current weather and its effects, and a toast announces each change.
 
+### Time of day (real clock) and fatigue
+
+The game follows your **computer's local clock**. The world's light changes smoothly through the day: dawn, bright midday, sunset, then night. At night your bike and the AI traffic switch on **headlights**, and job markers, gas stations and rest stops glow. Weather tints are mixed on top. The HUD shows the clock and the current part of the day, and a toast announces each new part.
+
+| Part of the day | Hours | Effects |
+|---|---|---|
+| Morning | 05-10 | **Breakfast rush:** food orders ×3, **heavy traffic** ×1.5 |
+| Midday | 10-14 | **Hot:** fuel use ×1.25, fatigue ×1.5 |
+| Afternoon | 14-18 | Normal |
+| Evening | 18-22 | **Fewer jobs** (3 instead of 5), **pay ×1.3**, fatigue ×1.4, less traffic |
+| Night | 22-05 | 2 jobs, pay ×1.5, fatigue ×1.6, quiet streets, dark |
+
+Each part of the day is a `TimePeriodData` .tres in `resources/day_periods/`. AI traffic grows or shrinks towards the new amount a few vehicles at a time, out of your sight.
+
+**Fatigue (0-100%)**, shown as the "Tired" bar on the HUD:
+- **Driving** adds about 4% per minute, times the part of the day's multiplier. The longer you drive **without a stop**, the faster it climbs, up to ×2. Every crash adds 2%.
+- **Standing still** (after a 2-second pause) recovers about 6% per minute.
+- You get warnings at 60% and 70%. Above 60% the HUD also shows the distance to the nearest rest stop.
+- At **80%** you are **exhausted**: you can only push the bike (about 8 km/h) and cannot take new jobs until fatigue is back down to **50%**.
+- **Rest stops** are street food stalls marked with a teal "REST" sign. Each city has a few, well spread out and away from the gas stations. Drive in and press **E** to eat and rest for the city's price (`rest.price` in the city JSON, $6-8). Fatigue drops to 0 in 4 seconds, and you cannot drive meanwhile. Without enough money, just stop and wait.
+- **Records:** fatigue is saved (save version 7), and the Job Board shows the money spent on food and rest.
+
 ### Driver rating (1-5 stars)
 
 Every finished or failed job gets a customer rating:
@@ -196,12 +218,13 @@ ui/            main_menu (startup scene), pause_menu, shop_panel, hud, job_board
 scripts/
   Main.cs      Composition root: picks a random city, registers the world, loads the save, opens the board
   player/      Player (motorbike controller), BikeVisual, TargetIndicator, VehicleStats
-  map/         CityMap (procedural builder), GasStation, CityLoader + CityConfig (JSON -> CityRegionData), Building, CityRegionData, DistrictData, DeliveryLocation
+  map/         CityMap (procedural builder), ServiceStop (base of GasStation / RestStop), CityLoader + CityConfig (JSON -> CityRegionData), Building, CityRegionData, DistrictData, DeliveryLocation
   jobs/        JobManager (state machine), JobGenerator, JobTemplate, JobData, JobMarker, DeliveryResult
   economy/     Wallet (+ WalletEntry), PlayerStats, Reputation (driver rating)
   vehicles/    VehicleCatalog, OwnedVehicle (+ PerkRoll), VehiclePerks (option table), VehicleShop (stock rotation)
   traffic/     TrafficManager (spawner), TrafficVehicle (AI road user), TrafficVehicleData, TrafficLights (signals + fines)
   weather/     WeatherSystem (picks and fades weather), WeatherData, RainOverlay
+  daycycle/    DayCycle (real-clock time of day + daylight), TimePeriodData, NightLight (headlights / glows)
   save/        SaveData.cs: JSON save DTOs; GameSettings.cs: preferences (touch controls)
   ui/          MainMenu, PauseMenu, ShopPanel, TouchControls, Hud, JobBoard, JobEntry, DeliveryResultPopup, StarRating (draws 0-5 stars)
 resources/
@@ -209,6 +232,7 @@ resources/
   vehicles/    vehicle_catalog.tres + one VehicleStats .tres per model (basic_scooter, city_scooter, cargo_moto, e_scooter, sport_bike)
   traffic/     TrafficVehicleData .tres files: bicycle, motorbike, car, bus
   weather/     WeatherData .tres files: sunny, cloudy, rain, storm
+  day_periods/ TimePeriodData .tres files: morning, midday, afternoon, evening, night
   ui/          ui_theme.tres
 ```
 
@@ -269,6 +293,17 @@ Physics layers: 1 = player, 2 = world, 3 = interactables (markers), 4 = traffic.
   - **Stations:** `CityMap.BuildGasStations()` turns well-spread curbside addresses into `GasStation`s using farthest-point sampling and its own seeded RNG. Those addresses are removed from the job locations.
   - **Buying:** `GasStation` handles **E** and calls `GameManager.BuyFuel()`.
   - **Settings:** tank size and consumption are on `VehicleStats` (`FuelCapacity`, `FuelPerKm`, `IdleFuelPerMinute`, `PushSpeed`).
+- **DayCycle** (the `DayCycle` node in `main.tscn`, placed before `Weather` so it is ready first):
+  - **Clock:** twice a second it reads `DateTime.Now`, or `ClockOverrideHour` (inspector, for testing any hour). It sets `Hour`, the daylight `LightColor` (interpolated from hourly keyframes), `Darkness` (0-1) and the active `TimePeriodData` (`GameManager.Period`). When the period changes, it emits `EventBus.PeriodChanged`.
+  - **Period effects:**
+    - `JobManager` multiplies the number of jobs per board by `JobCountMultiplier`.
+    - `JobGenerator` multiplies template weights by `TemplateWeights` (for example `"food": 3` in the morning).
+    - `GetRewardMultiplier()` includes `RewardMultiplier`, and `Player.ConsumeFuel()` includes `FuelMultiplier`.
+    - Fatigue uses `FatigueMultiplier`, and `TrafficManager` aims for its normal count × `TrafficMultiplier`.
+  - **Lighting:** `WeatherSystem` sets the `CanvasModulate` to its weather tint × `DayCycle.LightColor`. `NightLight` is a `PointLight2D` whose energy follows `Darkness`. It provides the headlights (`NightLight.Headlight`, on `Player` and `TrafficVehicle`) and the glows (`NightLight.Glow`, on `JobMarker` and `ServiceStop`). Its gradient texture is created on first use, never in a field initializer.
+- **Fatigue and rest stops:**
+  - **Player:** fatigue lives on `Player`, and its rates and thresholds are exported in the "Fatigue" group. `UpdateFatigue()` runs every physics frame. While `IsExhausted`, `MaxForwardSpeed` drops to `PushSpeed` and `JobManager.AcceptJob()` refuses new jobs.
+  - **Rest stops:** `RestStop` and `GasStation` share `ServiceStop` (trigger zone, prompt, E, night glow). `CityMap.TakeSpreadLocations()` places both with farthest-point sampling. `GameManager.Rest()` charges the price and calls `Player.StartRest()`.
 - **WeatherSystem** (the `Weather` node in `main.tscn`):
   - **Registration:** it registers itself as `GameManager.Weather`.
   - **Picking:** `WeatherData` is chosen by the city weights, avoiding a repeat of the current kind. Its duration is random between `MinDuration` and `MaxDuration`.
@@ -320,6 +355,10 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
   },
   "weather": {
     "weights": { "sunny": 3, "cloudy": 1.5, "rain": 2.5, "storm": 0.5 }  // ids from resources/weather
+  },
+  "rest": {
+    "price": 8,                     // meal + rest at a rest stop
+    "stops": -1                     // number of rest stops; -1 = about one per 16 blocks (min 2)
   }
 }
 ```
@@ -330,6 +369,8 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
 
 | Feature | Extension point |
 |---|---|
+| More parts of the day | Add a `TimePeriodData` .tres (with its `StartHour`) to `Periods` on the `DayCycle` node. |
+| Fatigue tuning | Change the exported "Fatigue" values on the Player in `scenes/player.tscn`, or the `FatigueMultiplier` of each period. |
 | More weather | Add a `WeatherData` .tres (for example fog: `SpeedMultiplier` 0.85 and a gray `Tint`) to `WeatherTypes` on the `Weather` node, then weight it in the city JSON. |
 | New vehicle model | Add a `VehicleStats` .tres (with a unique `ModelId` and shop data) to `vehicle_catalog.tres`. |
 | New vehicle option | Add a `VehiclePerkType` and a row in `VehiclePerks.All`, then apply it in `OwnedVehicle.BuildStats()` or wherever it acts. Saves store options by id. |

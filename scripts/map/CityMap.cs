@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 namespace ShipperSimulator;
@@ -8,7 +9,7 @@ namespace ShipperSimulator;
 /// - roads, sidewalks, parks and water are drawn in _Draw()
 /// - buildings and trees are <see cref="Building"/> (StaticBody2D) obstacles; water blocks are plain StaticBody2D
 /// - every block side gets a curbside <see cref="DeliveryLocation"/> for the job system
-/// - a few of those curbside spots become <see cref="GasStation"/>s (and are not used for jobs)
+/// - a few of those curbside spots become <see cref="GasStation"/>s and <see cref="RestStop"/>s (not used for jobs)
 /// </summary>
 public partial class CityMap : Node2D
 {
@@ -41,9 +42,11 @@ public partial class CityMap : Node2D
 
     public IReadOnlyList<DeliveryLocation> Locations => _locations;
     public IReadOnlyList<GasStation> GasStations => _gasStations;
+    public IReadOnlyList<RestStop> RestStops => _restStops;
 
     private readonly List<DeliveryLocation> _locations = new();
     private readonly List<GasStation> _gasStations = new();
+    private readonly List<RestStop> _restStops = new();
     private readonly List<Block> _blocks = new();
     private readonly RandomNumberGenerator _rng = new();
     private readonly DistrictData _fallbackDistrict = new();
@@ -74,6 +77,7 @@ public partial class CityMap : Node2D
         }
         BuildBoundaries();
         BuildGasStations();
+        BuildRestStops();
         QueueRedraw();
         EmitSignal(SignalName.MapBuilt);
     }
@@ -110,17 +114,21 @@ public partial class CityMap : Node2D
 
     public DistrictData GetDistrictAtPosition(Vector2 position) => DistrictFor(GetCellAtPosition(position));
 
-    public GasStation? GetNearestGasStation(Vector2 position)
+    public GasStation? GetNearestGasStation(Vector2 position) => Nearest(_gasStations, position);
+
+    public RestStop? GetNearestRestStop(Vector2 position) => Nearest(_restStops, position);
+
+    private static T? Nearest<T>(IEnumerable<T> stops, Vector2 position) where T : ServiceStop
     {
-        GasStation? best = null;
+        T? best = null;
         var bestDistance = float.MaxValue;
-        foreach (var station in _gasStations)
+        foreach (var stop in stops)
         {
-            var d = JobGenerator.RouteDistance(position, station.GlobalPosition);
+            var d = JobGenerator.RouteDistance(position, stop.GlobalPosition);
             if (d < bestDistance)
             {
                 bestDistance = d;
-                best = station;
+                best = stop;
             }
         }
         return best;
@@ -145,6 +153,7 @@ public partial class CityMap : Node2D
         _locations.Clear();
         _blocks.Clear();
         _gasStations.Clear();
+        _restStops.Clear();
         _obstaclesRoot?.QueueFree();
         _obstaclesRoot = null;
     }
@@ -280,24 +289,59 @@ public partial class CityMap : Node2D
         }
     }
 
-    /// <summary>
-    /// Turns well-spread curbside addresses into gas stations. Uses its own RNG (from the seed)
-    /// so adding stations does not change the rest of the layout.
-    /// </summary>
+    /// <summary>Turns well-spread curbside addresses into gas stations.</summary>
     private void BuildGasStations()
     {
         var count = Region.FuelStationCount >= 0
             ? Region.FuelStationCount
             : Mathf.Max(3, Region.GridSize.X * Region.GridSize.Y / 12);
+        foreach (var loc in TakeSpreadLocations(count, (ulong)ActiveSeed * 17UL + 3UL, new List<Vector2>()))
+        {
+            var station = new GasStation { Name = $"GasStation{_gasStations.Count}" };
+            station.Setup($"Gas Station, {loc.StreetName}", loc.Position);
+            _obstaclesRoot!.AddChild(station);
+            _gasStations.Add(station);
+        }
+    }
+
+    /// <summary>Turns well-spread curbside addresses (away from gas stations too) into rest stops.</summary>
+    private void BuildRestStops()
+    {
+        var count = Region.RestStopCount >= 0
+            ? Region.RestStopCount
+            : Mathf.Max(2, Region.GridSize.X * Region.GridSize.Y / 16);
+        var avoid = _gasStations.Select(s => s.Position).ToList();
+        foreach (var loc in TakeSpreadLocations(count, (ulong)ActiveSeed * 29UL + 11UL, avoid))
+        {
+            var stop = new RestStop { Name = $"RestStop{_restStops.Count}" };
+            stop.Setup($"Rest Stop, {loc.StreetName}", loc.Position);
+            _obstaclesRoot!.AddChild(stop);
+            _restStops.Add(stop);
+        }
+    }
+
+    /// <summary>
+    /// Picks well-spread addresses with farthest-point sampling (each pick goes where picks and
+    /// <paramref name="avoid"/> points are scarcest) and removes them from the job locations.
+    /// Uses its own RNG from <paramref name="seed"/>, so it does not change the rest of the layout.
+    /// </summary>
+    private List<DeliveryLocation> TakeSpreadLocations(int count, ulong seed, List<Vector2> avoid)
+    {
+        var chosen = new List<DeliveryLocation>();
         count = Mathf.Min(count, _locations.Count / 4);
         if (count <= 0)
-            return;
+            return chosen;
 
-        var rng = new RandomNumberGenerator { Seed = (ulong)ActiveSeed * 17UL + 3UL };
-        var chosen = new List<DeliveryLocation> { _locations[rng.RandiRange(0, _locations.Count - 1)] };
+        var rng = new RandomNumberGenerator { Seed = seed };
+        var taken = new List<Vector2>(avoid);
+        if (taken.Count == 0)
+        {
+            var first = _locations[rng.RandiRange(0, _locations.Count - 1)];
+            chosen.Add(first);
+            taken.Add(first.Position);
+        }
         while (chosen.Count < count)
         {
-            // Farthest-point sampling: the next station goes where stations are scarcest.
             DeliveryLocation? best = null;
             var bestScore = -1f;
             foreach (var loc in _locations)
@@ -305,8 +349,8 @@ public partial class CityMap : Node2D
                 if (chosen.Contains(loc))
                     continue;
                 var nearest = float.MaxValue;
-                foreach (var c in chosen)
-                    nearest = Mathf.Min(nearest, JobGenerator.RouteDistance(loc.Position, c.Position));
+                foreach (var p in taken)
+                    nearest = Mathf.Min(nearest, JobGenerator.RouteDistance(loc.Position, p));
                 var score = nearest * rng.RandfRange(0.85f, 1f);
                 if (score > bestScore)
                 {
@@ -317,16 +361,11 @@ public partial class CityMap : Node2D
             if (best == null)
                 break;
             chosen.Add(best);
+            taken.Add(best.Position);
         }
-
         foreach (var loc in chosen)
-        {
             _locations.Remove(loc);
-            var station = new GasStation { Name = $"GasStation{_gasStations.Count}" };
-            station.Setup($"Gas Station, {loc.StreetName}", loc.Position);
-            _obstaclesRoot!.AddChild(station);
-            _gasStations.Add(station);
-        }
+        return chosen;
     }
 
     private void BuildBoundaries()

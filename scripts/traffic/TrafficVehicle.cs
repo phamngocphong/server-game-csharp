@@ -71,6 +71,7 @@ public partial class TrafficVehicle : AnimatableBody2D
         SyncToPhysics = false;
         ZIndex = 4;
         AddChild(new CollisionShape2D { Shape = new RectangleShape2D { Size = new Vector2(data.Length, data.Width) } });
+        AddChild(NightLight.Headlight(data.Length * 0.5f, 120f + data.Length, data.Width * 2.5f, energy: 0.6f));
         BuildSensor();
     }
 

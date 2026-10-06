@@ -49,6 +49,11 @@ public partial class GameManager : Node
 	public CityMap? CityMap { get; private set; }
 	/// <summary>Weather of the gameplay scene; set by WeatherSystem while it is in the tree.</summary>
 	public WeatherSystem? Weather { get; set; }
+	/// <summary>Time of day of the gameplay scene; set by DayCycle while it is in the tree.</summary>
+	public DayCycle? DayCycle { get; set; }
+
+	/// <summary>Active part of the day, or null outside the gameplay scene.</summary>
+	public TimePeriodData? Period => DayCycle?.Current;
 
 	private double _autosaveTimer;
 
@@ -147,7 +152,37 @@ public partial class GameManager : Node
 	/// (weather, rush hour, vehicle perks...) plug in here too.
 	/// </summary>
 	public float GetRewardMultiplier(JobTemplate template) =>
-		Reputation.RewardMultiplier * (Weather?.Current.RewardMultiplier ?? 1f);
+		Reputation.RewardMultiplier
+		* (Weather?.Current.RewardMultiplier ?? 1f)
+		* (Period?.RewardMultiplier ?? 1f);
+
+	/// <summary>
+	/// Eat and rest at a rest stop: pays the city's rest price and clears fatigue in a few seconds.
+	/// </summary>
+	public void Rest(string stopName)
+	{
+		if (Player == null || CityMap == null)
+			return;
+		if (Player.IsResting)
+			return;
+		if (Player.Fatigue < 5f)
+		{
+			EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested, "You are not tired yet");
+			return;
+		}
+		var price = CityMap.Region.RestPrice;
+		if (price > Wallet.Balance)
+		{
+			EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested,
+				"Not enough money - stop the bike to recover slowly");
+			return;
+		}
+		Wallet.Add(-price, $"Meal & rest: {stopName}");
+		Stats.RecordRest(price);
+		Player.StartRest();
+		EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested,
+			$"Eating and resting... ({FormatMoney(price)})");
+	}
 
 	/// <summary>
 	/// Fills the player's tank at a gas station. With too little money it buys what the
@@ -347,6 +382,7 @@ public partial class GameManager : Node
 		Stats = Stats.ToSaveData(),
 		Reputation = Reputation.ToSaveData(),
 		Fuel = Player?.Fuel,
+		Fatigue = Player?.Fatigue ?? 0f,
 		Vehicle = Vehicle.ToSaveData(),
 		Shop = new ShopSaveData { Rotation = _shopRotation, SoldOffers = _soldOffers.ToList() },
 		RegionId = CityMap?.Region.RegionId ?? "",
@@ -366,6 +402,7 @@ public partial class GameManager : Node
 		ApplyVehicleToPlayer(); // before the fuel, so the tank size is right
 		if (Player != null && data.Fuel.HasValue)
 			Player.SetFuel(data.Fuel.Value);
+		Player?.SetFatigue(data.Fatigue);
 		// A position is only meaningful on the same city layout; otherwise keep the spawn point.
 		var sameMap = CityMap != null && data.RegionId == CityMap.Region.RegionId && data.LayoutSeed == CityMap.ActiveSeed;
 		if (Player != null && data.Player != null && sameMap)

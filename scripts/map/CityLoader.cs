@@ -102,6 +102,8 @@ public static class CityLoader
             TrafficLightChance = c.Traffic.LightChance,
             FuelPrice = c.Fuel.PricePerLiter,
             FuelStationCount = c.Fuel.Stations,
+            RestPrice = c.Rest.Price,
+            RestStopCount = c.Rest.Stops,
         };
         foreach (var (id, weight) in c.Weather.Weights)
             region.WeatherWeights[id] = weight;
@@ -180,6 +182,10 @@ public static class CityLoader
             errors.Add("fuel.stations must be 50 or less (-1 = automatic).");
         if (c.Weather.Weights.Values.Any(w => w < 0f))
             errors.Add("weather.weights cannot be negative.");
+        if (c.Rest.Price < 0)
+            errors.Add("rest.price cannot be negative.");
+        if (c.Rest.Stops > 50)
+            errors.Add("rest.stops must be 50 or less (-1 = automatic).");
         return errors;
     }
 

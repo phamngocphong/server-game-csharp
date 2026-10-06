@@ -8,6 +8,10 @@ namespace ShipperSimulator;
 /// Crashing into traffic stuns the player (no control) for the vehicle's
 /// <see cref="TrafficVehicleData.StunSeconds"/>. Driving burns fuel; with an empty tank the
 /// rider can only push the bike. The current weather scales speed, acceleration, grip and fuel use.
+/// Driving builds up fatigue (faster at hot midday and at night, and the longer you drive
+/// without stopping); standing still recovers it slowly, a rest stop quickly. At
+/// <see cref="ExhaustedAt"/> the rider is exhausted: push speed only, no new jobs, until
+/// fatigue is back down to <see cref="RecoveredAt"/>.
 /// </summary>
 public partial class Player : CharacterBody2D
 {
@@ -21,6 +25,19 @@ public partial class Player : CharacterBody2D
     private const float CrashKnockback = 140f;
 
     [Export] public VehicleStats VehicleStats { get; set; } = null!;
+
+    [ExportGroup("Fatigue")]
+    /// <summary>Fatigue points (of 100) gained per minute of driving, before multipliers.</summary>
+    [Export] public float FatiguePerMinute { get; set; } = 4f;
+    /// <summary>Points recovered per minute while standing still.</summary>
+    [Export] public float RecoveryPerMinute { get; set; } = 6f;
+    /// <summary>Each minute of driving without a stop adds this much to the fatigue rate (capped at x2).</summary>
+    [Export] public float ContinuousRampPerMinute { get; set; } = 0.15f;
+    [Export] public float ExhaustedAt { get; set; } = 80f;
+    [Export] public float RecoveredAt { get; set; } = 50f;
+    [Export] public float CrashFatigue { get; set; } = 2f;
+    /// <summary>Seconds a meal and rest at a rest stop takes.</summary>
+    [Export] public float RestDuration { get; set; } = 4f;
 
     public bool ControlsEnabled { get; private set; } = true;
     /// <summary>Signed speed along the heading (px/s).</summary>
@@ -41,11 +58,26 @@ public partial class Player : CharacterBody2D
     /// <summary>0 = no warning given yet for this tank, 1 = low, 2 = almost empty, 3 = empty.</summary>
     private int _fuelWarningLevel;
 
+    /// <summary>0-100.</summary>
+    public float Fatigue { get; private set; }
+    /// <summary>Too tired to ride: push speed only and no new jobs, until fatigue drops to RecoveredAt.</summary>
+    public bool IsExhausted { get; private set; }
+    public bool IsResting => _restTimeLeft > 0f;
+    public float RestTimeLeft => _restTimeLeft;
+
+    private float _drivingMinutes;
+    private float _stoppedTime;
+    private float _restTimeLeft;
+    private float _restRate;
+    /// <summary>0 = none, 1 = tired (60), 2 = very tired (70) warning given.</summary>
+    private int _fatigueWarningLevel;
+
     private WeatherData? Weather => GameManager.Instance.Weather?.Current;
-    private float MaxForwardSpeed => IsOutOfFuel
+    private bool CanOnlyPush => IsOutOfFuel || IsExhausted;
+    private float MaxForwardSpeed => CanOnlyPush
         ? VehicleStats.PushSpeed
         : VehicleStats.MaxSpeed * (Weather?.SpeedMultiplier ?? 1f);
-    private float CurrentAcceleration => IsOutOfFuel
+    private float CurrentAcceleration => CanOnlyPush
         ? VehicleStats.Acceleration * 0.35f
         : VehicleStats.Acceleration * (Weather?.AccelerationMultiplier ?? 1f);
 
@@ -58,6 +90,7 @@ public partial class Player : CharacterBody2D
         _visual = GetNode<BikeVisual>("BikeVisual");
         _camera = GetNode<Camera2D>("Camera2D");
         Fuel = VehicleStats.FuelCapacity;
+        AddChild(NightLight.Headlight(noseOffset: 16f, length: 300f, width: 150f));
         _lastFuelPosition = GlobalPosition;
 
         var bus = EventBus.Instance;
@@ -97,7 +130,7 @@ public partial class Player : CharacterBody2D
         var throttle = 0f;
         var steer = 0f;
         var handbrake = false;
-        if (ControlsEnabled && !IsStunned)
+        if (ControlsEnabled && !IsStunned && !IsResting)
         {
             throttle = Input.GetAxis("move_down", "move_up");
             steer = Input.GetAxis("move_left", "move_right");
@@ -120,6 +153,7 @@ public partial class Player : CharacterBody2D
         }
 
         ConsumeFuel(dt);
+        UpdateFatigue(dt);
         UpdateVisuals(steer, dt);
         UpdateCamera(dt);
     }
@@ -138,6 +172,86 @@ public partial class Player : CharacterBody2D
         _visual.BodyColor = bodyColor;
         _visual.HasThermalBox = thermalBox;
         Fuel = Mathf.Min(Fuel, stats.FuelCapacity);
+    }
+
+    /// <summary>Eat and rest (rest stop): no control for RestDuration while fatigue drops to 0.</summary>
+    public void StartRest()
+    {
+        _restTimeLeft = RestDuration;
+        _restRate = Fatigue / Mathf.Max(RestDuration, 0.1f);
+        ForwardSpeed = 0f;
+        Velocity = Vector2.Zero;
+    }
+
+    /// <summary>Restores fatigue from a save.</summary>
+    public void SetFatigue(float fatigue)
+    {
+        Fatigue = Mathf.Clamp(fatigue, 0f, 100f);
+        IsExhausted = Fatigue >= ExhaustedAt;
+        _fatigueWarningLevel = Fatigue >= 70f ? 2 : Fatigue >= 60f ? 1 : 0;
+    }
+
+    private void UpdateFatigue(float dt)
+    {
+        if (IsResting)
+        {
+            _restTimeLeft = Mathf.Max(0f, _restTimeLeft - dt);
+            Fatigue = Mathf.Max(0f, Fatigue - _restRate * dt);
+            if (!IsResting)
+            {
+                SetFatigue(0f);
+                _drivingMinutes = 0f;
+                EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested, "Well rested - ready to ride!");
+            }
+            return;
+        }
+
+        var moving = ControlsEnabled && Velocity.Length() > 20f;
+        if (moving)
+        {
+            _stoppedTime = 0f;
+            _drivingMinutes += dt / 60f;
+            var ramp = Mathf.Min(1f + _drivingMinutes * ContinuousRampPerMinute, 2f);
+            var period = GameManager.Instance.Period?.FatigueMultiplier ?? 1f;
+            Fatigue += FatiguePerMinute / 60f * dt * ramp * period;
+        }
+        else
+        {
+            _stoppedTime += dt;
+            if (_stoppedTime > 2f)
+            {
+                _drivingMinutes = 0f; // a real stop resets the "driving without a break" ramp
+                Fatigue -= RecoveryPerMinute / 60f * dt;
+            }
+        }
+        Fatigue = Mathf.Clamp(Fatigue, 0f, 100f);
+        UpdateExhaustion();
+    }
+
+    private void UpdateExhaustion()
+    {
+        if (!IsExhausted && Fatigue >= ExhaustedAt)
+        {
+            IsExhausted = true;
+            var stop = GameManager.Instance.CityMap?.GetNearestRestStop(GlobalPosition);
+            var where = stop != null
+                ? $" - nearest rest stop {GameManager.FormatDistance(JobGenerator.RouteDistance(GlobalPosition, stop.GlobalPosition))}"
+                : "";
+            EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested,
+                $"Exhausted! You can only push the bike. Rest or eat{where}");
+            return;
+        }
+        if (IsExhausted && Fatigue <= RecoveredAt)
+        {
+            IsExhausted = false;
+            EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested, "Recovered enough to ride again");
+        }
+
+        var level = Fatigue >= 70f ? 2 : Fatigue >= 60f ? 1 : 0;
+        if (level > _fatigueWarningLevel)
+            EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested,
+                level == 2 ? "Very tired - take a break soon" : "Getting tired - stop or visit a rest stop");
+        _fatigueWarningLevel = level;
     }
 
     /// <summary>Restores the tank from a save (any city).</summary>
@@ -159,7 +273,8 @@ public partial class Player : CharacterBody2D
         var used = moved / GameManager.PixelsPerKm * VehicleStats.FuelPerKm;
         if (ControlsEnabled)
             used += VehicleStats.IdleFuelPerMinute * dt / 60f;
-        Fuel = Mathf.Max(0f, Fuel - used * (Weather?.FuelMultiplier ?? 1f));
+        var multiplier = (Weather?.FuelMultiplier ?? 1f) * (GameManager.Instance.Period?.FuelMultiplier ?? 1f);
+        Fuel = Mathf.Max(0f, Fuel - used * multiplier);
         WarnLowFuel();
     }
 
@@ -236,6 +351,7 @@ public partial class Player : CharacterBody2D
         // Crash guard option shortens the stun.
         var stun = data.StunSeconds * (1f - GameManager.Instance.Vehicle.Perk(VehiclePerkType.CrashGuard));
         StunTimeLeft = stun;
+        Fatigue = Mathf.Min(100f, Fatigue + CrashFatigue);
         ForwardSpeed = 0f;
         Velocity = normal * CrashKnockback;
         vehicle.OnHitByPlayer();

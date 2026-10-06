@@ -37,6 +37,7 @@ public partial class JobMarker : Area2D
         BodyExited += OnBodyExited;
         _label.Text = Title;
         _label.AddThemeColorOverride("font_color", GetColor());
+        AddChild(NightLight.Glow(Radius * 2.2f, GetColor()));
     }
 
     public override void _Process(double delta)

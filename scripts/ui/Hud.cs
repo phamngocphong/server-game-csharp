@@ -28,6 +28,10 @@ public partial class Hud : Control
     private Label _fuelLabel = null!;
     private Label _stationLabel = null!;
     private Label _weatherLabel = null!;
+    private Label _clockLabel = null!;
+    private ProgressBar _fatigueBar = null!;
+    private Label _fatigueLabel = null!;
+    private Label _restLabel = null!;
     private Control _toastPanel = null!;
     private Label _toastLabel = null!;
     private ColorRect _flashRect = null!;
@@ -58,6 +62,10 @@ public partial class Hud : Control
         _fuelLabel = GetNode<Label>("%FuelLabel");
         _stationLabel = GetNode<Label>("%StationLabel");
         _weatherLabel = GetNode<Label>("%WeatherLabel");
+        _clockLabel = GetNode<Label>("%ClockLabel");
+        _fatigueBar = GetNode<ProgressBar>("%FatigueBar");
+        _fatigueLabel = GetNode<Label>("%FatigueLabel");
+        _restLabel = GetNode<Label>("%RestLabel");
         _toastPanel = GetNode<Control>("%ToastPanel");
         _toastLabel = GetNode<Label>("%ToastLabel");
         _flashRect = GetNode<ColorRect>("%FlashRect");
@@ -112,7 +120,12 @@ public partial class Hud : Control
         var player = GameManager.Instance.Player;
         if (player == null)
             return;
-        if (player.IsStunned)
+        if (player.IsResting)
+        {
+            _speedLabel.Text = $"RESTING  {player.RestTimeLeft.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} s";
+            _speedLabel.Modulate = new Color(0.4f, 0.95f, 0.85f);
+        }
+        else if (player.IsStunned)
         {
             _speedLabel.Text = $"CRASHED  {player.StunTimeLeft.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} s";
             _speedLabel.Modulate = new Color(1f, 0.35f, 0.3f);
@@ -124,6 +137,9 @@ public partial class Hud : Control
         }
         _cityLabel.Text = GameManager.Instance.CityMap?.Region.DisplayName ?? "";
         UpdateFuel(player);
+        UpdateFatigue(player);
+        var day = GameManager.Instance.DayCycle;
+        _clockLabel.Text = day == null ? "" : $"{day.ClockText()}  {day.Current.DisplayName}";
         _districtLabel.Text = GameManager.Instance.GetCurrentDistrict()?.DisplayName ?? "";
         if (_hasTarget && _activeJobPanel.Visible)
         {
@@ -156,6 +172,23 @@ public partial class Hud : Control
 
     private void RefreshStats() =>
         _deliveriesLabel.Text = $"Deliveries: {GameManager.Instance.Stats.TotalDeliveries}";
+
+    private void UpdateFatigue(Player player)
+    {
+        var fatigue = player.Fatigue;
+        _fatigueBar.Value = fatigue;
+        _fatigueBar.Modulate = player.IsExhausted || fatigue >= 70f ? new Color(1f, 0.35f, 0.3f)
+            : fatigue >= 50f ? new Color(1f, 0.75f, 0.3f)
+            : new Color(0.55f, 0.85f, 1f);
+        _fatigueLabel.Text = player.IsExhausted ? $"{Mathf.RoundToInt(fatigue)}% EXHAUSTED" : $"{Mathf.RoundToInt(fatigue)}%";
+
+        var stop = fatigue >= 60f || player.IsExhausted
+            ? GameManager.Instance.CityMap?.GetNearestRestStop(player.GlobalPosition)
+            : null;
+        _restLabel.Visible = stop != null;
+        if (stop != null)
+            _restLabel.Text = $"Nearest rest stop: {GameManager.FormatDistance(JobGenerator.RouteDistance(player.GlobalPosition, stop.GlobalPosition))}";
+    }
 
     private void UpdateFuel(Player player)
     {

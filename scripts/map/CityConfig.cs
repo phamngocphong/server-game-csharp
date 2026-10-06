@@ -22,6 +22,15 @@ public sealed class CityConfig
     public CityTrafficConfig Traffic { get; set; } = new();
     public CityFuelConfig Fuel { get; set; } = new();
     public CityWeatherConfig Weather { get; set; } = new();
+    public CityRestConfig Rest { get; set; } = new();
+}
+
+public sealed class CityRestConfig
+{
+    /// <summary>Price of a meal and rest at a rest stop.</summary>
+    public int Price { get; set; } = 8;
+    /// <summary>Number of rest stops; -1 = automatic (about one per 16 blocks, at least 2).</summary>
+    public int Stops { get; set; } = -1;
 }
 
 public sealed class CityFuelConfig

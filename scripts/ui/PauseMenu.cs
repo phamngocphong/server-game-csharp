@@ -92,7 +92,8 @@ public partial class PauseMenu : Control
             $"{city}  -  {weather}\n" +
             $"Balance {GameManager.FormatMoney(gm.Wallet.Balance)}   Deliveries {gm.Stats.TotalDeliveries}\n" +
             $"Rating {GameManager.FormatRating(gm.Reputation.Rating)} / 5   Fuel {fuel}   Played {GameManager.FormatTime(gm.Stats.PlayTime)}\n" +
-            $"Vehicle: {gm.VehicleName()}";
+            $"Vehicle: {gm.VehicleName()}   Fatigue {Mathf.RoundToInt(gm.Player?.Fatigue ?? 0f)}%" +
+            (gm.DayCycle != null ? $"   {gm.DayCycle.ClockText()} {gm.DayCycle.Current.DisplayName}" : "");
     }
 
     private void RefreshOptions()

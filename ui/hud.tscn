@@ -32,7 +32,7 @@ layout_mode = 0
 offset_left = 16.0
 offset_top = 16.0
 offset_right = 296.0
-offset_bottom = 210.0
+offset_bottom = 236.0
 mouse_filter = 2
 
 [node name="VBox" type="VBoxContainer" parent="WalletPanel"]
@@ -81,6 +81,13 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.8, 0.5, 1)
 text = "District"
+
+[node name="ClockLabel" type="Label" parent="WalletPanel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.9, 0.7, 1)
+theme_override_font_sizes/font_size = 14
+text = "00:00"
 
 [node name="WeatherLabel" type="Label" parent="WalletPanel/VBox"]
 unique_name_in_owner = true
@@ -210,7 +217,7 @@ anchors_preset = 2
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = 16.0
-offset_top = -150.0
+offset_top = -205.0
 offset_right = 456.0
 offset_bottom = -16.0
 grow_vertical = 0
@@ -250,6 +257,37 @@ show_percentage = false
 unique_name_in_owner = true
 layout_mode = 2
 text = "4.0 L"
+
+[node name="FatigueRow" type="HBoxContainer" parent="SpeedPanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="FatigueTitle" type="Label" parent="SpeedPanel/VBox/FatigueRow"]
+layout_mode = 2
+text = "Tired"
+
+[node name="FatigueBar" type="ProgressBar" parent="SpeedPanel/VBox/FatigueRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 16)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+step = 0.1
+show_percentage = false
+
+[node name="FatigueLabel" type="Label" parent="SpeedPanel/VBox/FatigueRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "0%"
+
+[node name="RestLabel" type="Label" parent="SpeedPanel/VBox"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.95, 0.85, 1)
+theme_override_font_sizes/font_size = 13
+text = "Nearest rest stop: -"
 
 [node name="StationLabel" type="Label" parent="SpeedPanel/VBox"]
 unique_name_in_owner = true

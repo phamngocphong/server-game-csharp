@@ -16,6 +16,13 @@
 [ext_resource type="PackedScene" path="res://ui/pause_menu.tscn" id="28_pause"]
 [ext_resource type="Script" path="res://scripts/ui/TouchControls.cs" id="29_touch"]
 [ext_resource type="PackedScene" path="res://ui/shop_panel.tscn" id="30_shop"]
+[ext_resource type="Script" path="res://scripts/daycycle/DayCycle.cs" id="31_daycycle"]
+[ext_resource type="Script" path="res://scripts/daycycle/TimePeriodData.cs" id="32_period"]
+[ext_resource type="Resource" path="res://resources/day_periods/morning.tres" id="33_morning"]
+[ext_resource type="Resource" path="res://resources/day_periods/midday.tres" id="34_midday"]
+[ext_resource type="Resource" path="res://resources/day_periods/afternoon.tres" id="35_afternoon"]
+[ext_resource type="Resource" path="res://resources/day_periods/evening.tres" id="36_evening"]
+[ext_resource type="Resource" path="res://resources/day_periods/night.tres" id="37_night"]
 [ext_resource type="Resource" path="res://resources/jobs/passenger_ride.tres" id="14_passenger"]
 [ext_resource type="Script" path="res://scripts/traffic/TrafficManager.cs" id="15_traffic"]
 [ext_resource type="Script" path="res://scripts/traffic/TrafficVehicleData.cs" id="16_vehicle_data"]
@@ -35,6 +42,10 @@
 script = ExtResource("1_main")
 
 [node name="CityMap" parent="." instance=ExtResource("2_map")]
+
+[node name="DayCycle" type="Node" parent="."]
+script = ExtResource("31_daycycle")
+Periods = Array[ExtResource("32_period")]([ExtResource("33_morning"), ExtResource("34_midday"), ExtResource("35_afternoon"), ExtResource("36_evening"), ExtResource("37_night")])
 
 [node name="Weather" type="Node" parent="." node_paths=PackedStringArray("Map")]
 script = ExtResource("22_weather")

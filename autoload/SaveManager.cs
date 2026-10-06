@@ -17,7 +17,7 @@ public partial class SaveManager : Node
     /// <summary>Preferences file (touch controls...); separate from the save so New Game keeps it.</summary>
     public string SettingsPath { get; set; } = "user://settings.cfg";
     public GameSettings Settings { get; private set; } = new();
-    public const int SaveVersion = 6;
+    public const int SaveVersion = 7;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -128,6 +128,7 @@ public partial class SaveManager : Node
         // v3 -> v4: adds total_violations and total_fines (default 0).
         // v4 -> v5: adds fuel (missing = full tank) and total_fuel_spent (default 0).
         // v5 -> v6: adds vehicle (missing = starter vehicle) and shop (sold offers of the rotation).
+        // v6 -> v7: adds fatigue (default 0) and total_rest_spent (default 0).
         data.Version = SaveVersion;
         return data;
     }
