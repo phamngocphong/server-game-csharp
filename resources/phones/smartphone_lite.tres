@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="PhoneData" format=3]
+
+[ext_resource type="Script" path="res://scripts/phones/PhoneData.cs" id="1_phone"]
+
+[resource]
+script = ExtResource("1_phone")
+PhoneId = "smartphone_lite"
+DisplayName = "Smartphone Lite"
+Description = "A budget smartphone: the app shows one more job."
+CaseColor = Color(0.25, 0.55, 0.9, 1)
+Price = 250
+JobSlots = 4
+ExtraRefreshes = 0

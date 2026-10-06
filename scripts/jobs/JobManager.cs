@@ -15,7 +15,6 @@ public partial class JobManager : Node
     [Export] public Node2D MarkersRoot { get; set; } = null!;
     [Export] public PackedScene MarkerScene { get; set; } = null!;
     [Export] public Godot.Collections.Array<JobTemplate> JobTemplates { get; set; } = new();
-    [Export] public int JobsPerBoard { get; set; } = 5;
     /// <summary>Opening the board after moving this far (px) regenerates nearby jobs.</summary>
     [Export] public float RegenerateDistance { get; set; } = 900f;
 
@@ -40,7 +39,8 @@ public partial class JobManager : Node
     {
         _generator = new JobGenerator(Map, JobTemplates);
         Bus.JobAcceptRequested += AcceptJob;
-        Bus.JobRefreshRequested += RefreshJobs;
+        Bus.JobRefreshRequested += OnRefreshRequested;
+        Bus.PhoneChanged += OnPhoneChanged;
         Bus.JobCancelRequested += CancelActiveJob;
         Bus.JobBoardOpened += OnJobBoardOpened;
         Bus.DeliveryPopupClosed += OnDeliveryPopupClosed;
@@ -51,7 +51,8 @@ public partial class JobManager : Node
         // C# events of [Signal]s declared in C# are plain delegates: Godot does not
         // disconnect them when this node is freed, so unsubscribe explicitly.
         Bus.JobAcceptRequested -= AcceptJob;
-        Bus.JobRefreshRequested -= RefreshJobs;
+        Bus.JobRefreshRequested -= OnRefreshRequested;
+        Bus.PhoneChanged -= OnPhoneChanged;
         Bus.JobCancelRequested -= CancelActiveJob;
         Bus.JobBoardOpened -= OnJobBoardOpened;
         Bus.DeliveryPopupClosed -= OnDeliveryPopupClosed;
@@ -109,7 +110,32 @@ public partial class JobManager : Node
         }
     }
 
-    /// <summary>Generates a fresh set of jobs around the player's current position.</summary>
+    /// <summary>The board's Refresh button: costs one of today's limited refreshes.</summary>
+    private void OnRefreshRequested()
+    {
+        if (CurrentState != State.Idle)
+            return;
+        if (!GameManager.Instance.TryUseRefresh())
+        {
+            Bus.EmitSignal(EventBus.SignalName.NotificationRequested, "No job refreshes left today - they reset at midnight");
+            return;
+        }
+        RefreshJobs();
+    }
+
+    /// <summary>A new phone shows more jobs right away (free, not a refresh).</summary>
+    private void OnPhoneChanged()
+    {
+        if (CurrentState == State.Idle && _generator != null)
+            RefreshJobs();
+    }
+
+    /// <summary>
+    /// Generates a fresh set of jobs around the player's current position: as many as the
+    /// phone shows (PhoneData.JobSlots) times the part of the day's JobCountMultiplier.
+    /// Automatic (after a delivery, a failed or cancelled job, or moving far) and free;
+    /// only the board's Refresh button is limited (<see cref="OnRefreshRequested"/>).
+    /// </summary>
     public void RefreshJobs()
     {
         if (CurrentState != State.Idle)
@@ -117,7 +143,8 @@ public partial class JobManager : Node
         var origin = GameManager.Instance.GetPlayerPosition();
         _lastOrigin = origin;
         var period = GameManager.Instance.Period;
-        var count = Mathf.Max(1, Mathf.RoundToInt(JobsPerBoard * (period?.JobCountMultiplier ?? 1f)));
+        var slots = GameManager.Instance.Phone.JobSlots;
+        var count = Mathf.Max(1, Mathf.RoundToInt(slots * (period?.JobCountMultiplier ?? 1f)));
         _availableJobs = _generator.GenerateJobs(origin, count);
         EmitJobsUpdated();
         var notice = _generator.DescribeRatingLimits(GameManager.Instance.Reputation.Rating);

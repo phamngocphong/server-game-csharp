@@ -60,6 +60,10 @@ public partial class EventBus : Node
 	[Signal] public delegate void JobBoardOpenedEventHandler();
 	/// <summary>The pause menu's "Vehicle Shop" button was pressed.</summary>
 	[Signal] public delegate void ShopRequestedEventHandler();
+	/// <summary>The player's phone changed (bought in the shop, or loaded from a save).</summary>
+	[Signal] public delegate void PhoneChangedEventHandler();
+	/// <summary>A job refresh was used, or the daily refreshes were reset.</summary>
+	[Signal] public delegate void RefreshesChangedEventHandler();
 	/// <summary>The player's vehicle changed (bought in the shop, or loaded from a save).</summary>
 	[Signal] public delegate void VehicleChangedEventHandler();
 	/// <summary>The on-screen pause button was pressed (Esc / P go straight to the pause menu).</summary>

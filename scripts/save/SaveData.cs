@@ -24,6 +24,11 @@ public sealed class GameSaveData
     /// <summary>Current vehicle and its options; null (older saves) = the starter vehicle.</summary>
     public VehicleSaveData? Vehicle { get; set; }
     public ShopSaveData Shop { get; set; } = new();
+    /// <summary>Current phone; empty (older saves) = the starter phone.</summary>
+    public string PhoneId { get; set; } = "";
+    /// <summary>Local date ("2026-10-06") the refresh counter belongs to.</summary>
+    public string RefreshDay { get; set; } = "";
+    public int RefreshesUsed { get; set; }
     /// <summary>City and layout seed the player position belongs to.</summary>
     public string RegionId { get; set; } = "";
     public int LayoutSeed { get; set; }

@@ -43,6 +43,18 @@ public partial class GameManager : Node
 	/// <summary>The player's vehicle and its options; survives scene changes, saved in the game save.</summary>
 	public OwnedVehicle Vehicle { get; private set; } = new();
 
+	/// <summary>Job refreshes everyone gets per day; the phone can add more (PhoneData.ExtraRefreshes).</summary>
+	public const int FreeRefreshesPerDay = 3;
+
+	/// <summary>All phones (loaded in _Ready).</summary>
+	public PhoneCatalog Phones { get; private set; } = null!;
+	/// <summary>The player's phone: how many jobs the board shows.</summary>
+	public PhoneData Phone { get; private set; } = null!;
+	/// <summary>Date ("yyyy-MM-dd") to use instead of today's, for testing the daily reset; empty = real date.</summary>
+	public string TodayOverride { get; set; } = "";
+
+	private string _refreshDay = "";
+	private int _refreshesUsed;
 	private string _shopRotation = "";
 	private readonly HashSet<int> _soldOffers = new();
 	public Player? Player { get; private set; }
@@ -79,6 +91,8 @@ public partial class GameManager : Node
 		Reputation.Changed += OnReputationChanged;
 		Catalog = GD.Load<VehicleCatalog>(VehicleCatalog.DefaultPath);
 		Vehicle = Catalog.CreateStarter();
+		Phones = GD.Load<PhoneCatalog>(PhoneCatalog.DefaultPath);
+		Phone = Phones.Starter();
 	}
 
 	public override void _Process(double delta)
@@ -133,8 +147,11 @@ public partial class GameManager : Node
 		Stats.LoadSaveData(new StatsSaveData());
 		Reputation.LoadSaveData(new ReputationSaveData());
 		Vehicle = Catalog.CreateStarter();
+		Phone = Phones.Starter();
 		_shopRotation = "";
 		_soldOffers.Clear();
+		_refreshDay = "";
+		_refreshesUsed = 0;
 		NextStart = StartMode.NewGame;
 	}
 
@@ -246,6 +263,60 @@ public partial class GameManager : Node
 		if (fillTank)
 			Player.SetFuel(Player.FuelCapacity);
 		EventBus.Instance.EmitSignal(EventBus.SignalName.VehicleChanged);
+	}
+
+	// --- Phone and job refreshes -------------------------------------------------
+
+	public string Today => TodayOverride.Length > 0
+		? TodayOverride
+		: DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+	public int RefreshesPerDay => FreeRefreshesPerDay + Phone.ExtraRefreshes;
+
+	public int RefreshesLeft
+	{
+		get
+		{
+			RollRefreshDay();
+			return Mathf.Max(0, RefreshesPerDay - _refreshesUsed);
+		}
+	}
+
+	/// <summary>Spends one of today's job refreshes; false when none are left.</summary>
+	public bool TryUseRefresh()
+	{
+		if (RefreshesLeft <= 0)
+			return false;
+		_refreshesUsed++;
+		EventBus.Instance.EmitSignal(EventBus.SignalName.RefreshesChanged);
+		return true;
+	}
+
+	/// <summary>A new local day resets the counter.</summary>
+	private void RollRefreshDay()
+	{
+		if (_refreshDay == Today)
+			return;
+		_refreshDay = Today;
+		_refreshesUsed = 0;
+		EventBus.Instance.EmitSignal(EventBus.SignalName.RefreshesChanged);
+	}
+
+	/// <summary>Buys a better phone (no trade-in). Returns an error message, or null on success.</summary>
+	public string? BuyPhone(PhoneData phone)
+	{
+		if (phone == Phone)
+			return "You already have this phone.";
+		if (phone.JobSlots <= Phone.JobSlots && phone.ExtraRefreshes <= Phone.ExtraRefreshes)
+			return "Your phone is already as good.";
+		if (phone.Price > Wallet.Balance)
+			return "Not enough money.";
+		Wallet.Add(-phone.Price, $"Bought phone: {phone.DisplayName}");
+		Phone = phone;
+		EventBus.Instance.EmitSignal(EventBus.SignalName.PhoneChanged);
+		EventBus.Instance.EmitSignal(EventBus.SignalName.RefreshesChanged);
+		SaveManager.Instance.SaveGame(silent: true);
+		return null;
 	}
 
 	public bool IsOfferSold(VehicleOffer offer) => offer.SlotKey == _shopRotation && _soldOffers.Contains(offer.OfferId);
@@ -385,6 +456,9 @@ public partial class GameManager : Node
 		Fatigue = Player?.Fatigue ?? 0f,
 		Vehicle = Vehicle.ToSaveData(),
 		Shop = new ShopSaveData { Rotation = _shopRotation, SoldOffers = _soldOffers.ToList() },
+		PhoneId = Phone.PhoneId,
+		RefreshDay = _refreshDay,
+		RefreshesUsed = _refreshesUsed,
 		RegionId = CityMap?.Region.RegionId ?? "",
 		LayoutSeed = CityMap?.ActiveSeed ?? 0,
 		Player = Player?.GetSaveData(),
@@ -396,6 +470,11 @@ public partial class GameManager : Node
 		Stats.LoadSaveData(data.Stats);
 		Reputation.LoadSaveData(data.Reputation);
 		Vehicle = data.Vehicle != null ? OwnedVehicle.FromSaveData(data.Vehicle) : Catalog.CreateStarter();
+		Phone = Phones.Find(data.PhoneId) ?? Phones.Starter();
+		_refreshDay = data.RefreshDay;
+		_refreshesUsed = data.RefreshesUsed;
+		EventBus.Instance.EmitSignal(EventBus.SignalName.PhoneChanged);
+		EventBus.Instance.EmitSignal(EventBus.SignalName.RefreshesChanged);
 		_shopRotation = data.Shop.Rotation;
 		_soldOffers.Clear();
 		_soldOffers.UnionWith(data.Shop.SoldOffers);

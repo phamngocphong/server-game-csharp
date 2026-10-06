@@ -6,9 +6,11 @@ using Godot;
 namespace ShipperSimulator;
 
 /// <summary>
-/// Vehicle shop, opened from the pause menu (the game stays paused). Shows the current
-/// vehicle with its trade-in value, the countdown to the next rotation (00:00 / 08:00 / 16:00)
-/// and one card per offer. Buying trades in the current vehicle (<see cref="GameManager.BuyVehicle"/>).
+/// Shop, opened from the pause menu (the game stays paused), with two tabs:
+/// - Vehicles: the current vehicle with its trade-in value, the countdown to the next rotation
+///   (00:00 / 08:00 / 16:00) and one card per offer. Buying trades in the current vehicle
+///   (<see cref="GameManager.BuyVehicle"/>).
+/// - Phones: every phone, always in stock; a better phone shows more jobs (<see cref="GameManager.BuyPhone"/>).
 /// </summary>
 public partial class ShopPanel : Control
 {
@@ -21,8 +23,13 @@ public partial class ShopPanel : Control
     private Label _messageLabel = null!;
     private GridContainer _offersGrid = null!;
     private ConfirmationDialog _confirmDialog = null!;
+    private Button _vehiclesTab = null!;
+    private Button _phonesTab = null!;
+    private bool _showPhones;
     private string _shownRotation = "";
-    private VehicleOffer? _pendingOffer;
+    /// <summary>Purchase waiting for the confirmation dialog: returns an error or null.</summary>
+    private Func<string?>? _pendingBuy;
+    private string _pendingSuccess = "";
 
     public override void _Ready()
     {
@@ -34,6 +41,10 @@ public partial class ShopPanel : Control
         _offersGrid = GetNode<GridContainer>("%OffersGrid");
         _confirmDialog = GetNode<ConfirmationDialog>("%ConfirmBuy");
         GetNode<Button>("%CloseButton").Pressed += Close;
+        _vehiclesTab = GetNode<Button>("%VehiclesTab");
+        _phonesTab = GetNode<Button>("%PhonesTab");
+        _vehiclesTab.Pressed += () => ShowTab(phones: false);
+        _phonesTab.Pressed += () => ShowTab(phones: true);
         _confirmDialog.Confirmed += OnConfirmed;
         EventBus.Instance.ShopRequested += Open;
         Hide();
@@ -59,6 +70,8 @@ public partial class ShopPanel : Control
     {
         if (!Visible)
             return;
+        if (_showPhones)
+            return;
         if (CurrentRotation() != _shownRotation)
             Refresh(); // the rotation changed while the shop was open
         UpdateCountdown();
@@ -73,14 +86,45 @@ public partial class ShopPanel : Control
 
     public void Close() => Hide();
 
+    private void ShowTab(bool phones)
+    {
+        _showPhones = phones;
+        _messageLabel.Text = "";
+        Refresh();
+    }
+
     private string CurrentRotation() =>
         string.IsNullOrEmpty(RotationOverride) ? VehicleShop.RotationKey(DateTime.Now) : RotationOverride;
 
     private void Refresh()
     {
         var gm = GameManager.Instance;
-        _shownRotation = CurrentRotation();
         _balanceLabel.Text = $"Balance {GameManager.FormatMoney(gm.Wallet.Balance)}";
+        _vehiclesTab.ButtonPressed = !_showPhones;
+        _phonesTab.ButtonPressed = _showPhones;
+        foreach (var child in _offersGrid.GetChildren())
+            child.QueueFree();
+        if (_showPhones)
+            RefreshPhones();
+        else
+            RefreshVehicles();
+    }
+
+    private void RefreshPhones()
+    {
+        var gm = GameManager.Instance;
+        var phone = gm.Phone;
+        _rotationLabel.Text = "Phones are always in stock. A better phone shows more jobs on the Job Board.";
+        _currentLabel.Text =
+            $"Your phone: {phone.DisplayName}   -   shows {phone.JobSlots} jobs, {gm.RefreshesPerDay} job refreshes a day";
+        foreach (var offer in gm.Phones.Phones)
+            _offersGrid.AddChild(BuildPhoneCard(offer));
+    }
+
+    private void RefreshVehicles()
+    {
+        var gm = GameManager.Instance;
+        _shownRotation = CurrentRotation();
 
         var current = gm.Vehicle;
         var currentModel = gm.Catalog.Find(current.ModelId);
@@ -89,8 +133,6 @@ public partial class ShopPanel : Control
             (currentModel != null ? DescribeStats(current.BuildStats(currentModel)) : "") + "\n" +
             current.DescribePerks("   -   ");
 
-        foreach (var child in _offersGrid.GetChildren())
-            child.QueueFree();
         var offers = VehicleShop.GenerateOffers(gm.Catalog, _shownRotation);
         foreach (var offer in offers)
             _offersGrid.AddChild(BuildCard(offer, currentModel != null ? current.BuildStats(currentModel) : null));
@@ -158,6 +200,68 @@ public partial class ShopPanel : Control
         return card;
     }
 
+    private Control BuildPhoneCard(PhoneData phone)
+    {
+        var gm = GameManager.Instance;
+        var current = gm.Phone;
+        var card = new PanelContainer { ThemeTypeVariation = "JobCard", SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        var box = new VBoxContainer();
+        box.AddThemeConstantOverride("separation", 6);
+        card.AddChild(box);
+
+        var header = new HBoxContainer();
+        header.AddChild(new ColorRect { Color = phone.CaseColor, CustomMinimumSize = new Vector2(14, 24) });
+        var name = new Label { Text = phone.DisplayName, SizeFlagsHorizontal = SizeFlags.ExpandFill };
+        name.AddThemeFontSizeOverride("font_size", 18);
+        header.AddChild(name);
+        var price = new Label { Text = phone.Price > 0 ? GameManager.FormatMoney(phone.Price) : "Free" };
+        price.AddThemeColorOverride("font_color", new Color(0.55f, 1f, 0.6f));
+        price.AddThemeFontSizeOverride("font_size", 18);
+        header.AddChild(price);
+        box.AddChild(header);
+
+        box.AddChild(SmallLabel(phone.Description, new Color(0.75f, 0.75f, 0.8f)));
+        var slotDiff = phone.JobSlots - current.JobSlots;
+        var refreshes = GameManager.FreeRefreshesPerDay + phone.ExtraRefreshes;
+        box.AddChild(SmallLabel(
+            $"Shows {phone.JobSlots} jobs{(slotDiff != 0 ? $" ({(slotDiff > 0 ? "+" : "")}{slotDiff})" : "")}   -   " +
+            $"{refreshes} job refreshes a day", Colors.White));
+
+        var button = new Button { FocusMode = FocusModeEnum.None };
+        var better = phone.JobSlots > current.JobSlots || phone.ExtraRefreshes > current.ExtraRefreshes;
+        if (phone == current)
+        {
+            button.Text = "Your phone";
+            button.Disabled = true;
+        }
+        else if (!better)
+        {
+            button.Text = "Your phone is better";
+            button.Disabled = true;
+        }
+        else
+        {
+            button.Text = $"Buy for {GameManager.FormatMoney(phone.Price)}";
+            button.Disabled = phone.Price > gm.Wallet.Balance;
+            if (button.Disabled)
+                button.TooltipText = "Not enough money";
+            button.Pressed += () => AskToBuyPhone(phone);
+        }
+        box.AddChild(button);
+        return card;
+    }
+
+    private void AskToBuyPhone(PhoneData phone)
+    {
+        _pendingBuy = () => GameManager.Instance.BuyPhone(phone);
+        _pendingSuccess = $"Your new {phone.DisplayName} shows {phone.JobSlots} jobs.";
+        _confirmDialog.DialogText =
+            $"Buy the {phone.DisplayName} for {GameManager.FormatMoney(phone.Price)}?\n\n" +
+            $"The Job Board will show {phone.JobSlots} jobs and you get " +
+            $"{GameManager.FreeRefreshesPerDay + phone.ExtraRefreshes} job refreshes a day.";
+        _confirmDialog.PopupCentered();
+    }
+
     private static Label SmallLabel(string text, Color color)
     {
         var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart };
@@ -189,7 +293,8 @@ public partial class ShopPanel : Control
         var gm = GameManager.Instance;
         var currentName = gm.Catalog.Find(gm.Vehicle.ModelId)?.VehicleName ?? gm.Vehicle.ModelId;
         var net = offer.Vehicle.Price - gm.Vehicle.TradeInValue;
-        _pendingOffer = offer;
+        _pendingBuy = () => GameManager.Instance.BuyVehicle(offer);
+        _pendingSuccess = $"You now ride the {offer.Model.VehicleName}. Full tank included!";
         _confirmDialog.DialogText =
             $"Buy the {offer.Model.VehicleName} for {GameManager.FormatMoney(offer.Vehicle.Price)}?\n\n" +
             $"Your {currentName} is traded in for {GameManager.FormatMoney(gm.Vehicle.TradeInValue)}.\n" +
@@ -199,12 +304,12 @@ public partial class ShopPanel : Control
 
     private void OnConfirmed()
     {
-        if (_pendingOffer == null)
+        if (_pendingBuy == null)
             return;
-        var error = GameManager.Instance.BuyVehicle(_pendingOffer);
-        _messageLabel.Text = error ?? $"You now ride the {_pendingOffer.Model.VehicleName}. Full tank included!";
+        var error = _pendingBuy();
+        _messageLabel.Text = error ?? _pendingSuccess;
         _messageLabel.Modulate = error == null ? new Color(0.55f, 1f, 0.6f) : new Color(1f, 0.45f, 0.4f);
-        _pendingOffer = null;
+        _pendingBuy = null;
         Refresh();
     }
 }

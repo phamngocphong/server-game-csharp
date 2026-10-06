@@ -69,7 +69,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 42)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.8, 0.4, 1)
-text = "Vehicle Shop"
+text = "Shop (vehicles & phones)"
 
 [node name="SaveButton" type="Button" parent="Center/Panel/VBox"]
 unique_name_in_owner = true

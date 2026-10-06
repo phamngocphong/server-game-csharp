@@ -17,6 +17,7 @@ public partial class JobBoard : Control
     private bool _hasActiveJob;
 
     private Control _panel = null!;
+    private Label _titleLabel = null!;
     private Label _subtitleLabel = null!;
     private Label _noticeLabel = null!;
     private VBoxContainer _jobList = null!;
@@ -30,6 +31,7 @@ public partial class JobBoard : Control
     {
         _jobEntryScene = GD.Load<PackedScene>(JobEntryScenePath);
         _panel = GetNode<Control>("%Panel");
+        _titleLabel = GetNode<Label>("%TitleLabel");
         _subtitleLabel = GetNode<Label>("%SubtitleLabel");
         _noticeLabel = GetNode<Label>("%NoticeLabel");
         _jobList = GetNode<VBoxContainer>("%JobList");
@@ -47,10 +49,13 @@ public partial class JobBoard : Control
         bus.StatsChanged += RefreshHistory;
         bus.ReputationChanged += RefreshHistory;
         bus.JobBoardNoticeChanged += OnNoticeChanged;
+        bus.RefreshesChanged += UpdateRefreshButton;
+        bus.PhoneChanged += UpdateTitle;
         _refreshButton.Pressed += OnRefreshPressed;
         _closeButton.Pressed += Close;
 
         _panel.Hide();
+        UpdateTitle();
         UpdateEmptyState(0);
     }
 
@@ -66,6 +71,8 @@ public partial class JobBoard : Control
         bus.StatsChanged -= RefreshHistory;
         bus.ReputationChanged -= RefreshHistory;
         bus.JobBoardNoticeChanged -= OnNoticeChanged;
+        bus.RefreshesChanged -= UpdateRefreshButton;
+        bus.PhoneChanged -= UpdateTitle;
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -81,6 +88,7 @@ public partial class JobBoard : Control
 
     public void Open()
     {
+        UpdateRefreshButton(); // the daily refreshes may have reset since the last look
         _panel.Show();
         RefreshHistory();
         EventBus.Instance.EmitSignal(EventBus.SignalName.JobBoardOpened);
@@ -118,7 +126,7 @@ public partial class JobBoard : Control
 
     private void UpdateEmptyState(int jobCount)
     {
-        _refreshButton.Disabled = _hasActiveJob;
+        UpdateRefreshButton();
         if (_hasActiveJob)
         {
             _emptyLabel.Text = "You already have an active job.\nFinish or cancel it to take a new one.";
@@ -126,7 +134,7 @@ public partial class JobBoard : Control
         }
         else if (jobCount == 0)
         {
-            _emptyLabel.Text = "No jobs available. Try refreshing.";
+            _emptyLabel.Text = "No jobs available right now.";
             _emptyLabel.Show();
         }
         else
@@ -136,6 +144,23 @@ public partial class JobBoard : Control
     }
 
     private void OnBalanceChanged(int balance, int delta) => RefreshHistory();
+
+    /// <summary>The board looks like the phone's delivery app.</summary>
+    private void UpdateTitle()
+    {
+        var phone = GameManager.Instance.Phone;
+        _titleLabel.Text = $"{phone.DisplayName}  -  {phone.JobSlots} job slots";
+    }
+
+    private void UpdateRefreshButton()
+    {
+        var gm = GameManager.Instance;
+        var left = gm.RefreshesLeft;
+        _refreshButton.Disabled = _hasActiveJob || left <= 0;
+        _refreshButton.Text = left > 0
+            ? $"Refresh Jobs  ({left}/{gm.RefreshesPerDay} left today)"
+            : "No refreshes left - they reset at midnight";
+    }
 
     private void OnNoticeChanged(string text)
     {

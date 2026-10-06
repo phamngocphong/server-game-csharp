@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="PhoneCatalog" format=3]
+
+[ext_resource type="Script" path="res://scripts/phones/PhoneCatalog.cs" id="1_catalog"]
+[ext_resource type="Script" path="res://scripts/phones/PhoneData.cs" id="2_phone"]
+[ext_resource type="Resource" path="res://resources/phones/basic_phone.tres" id="3_basic"]
+[ext_resource type="Resource" path="res://resources/phones/smartphone_lite.tres" id="4_lite"]
+[ext_resource type="Resource" path="res://resources/phones/smartphone_pro.tres" id="5_pro"]
+[ext_resource type="Resource" path="res://resources/phones/flagship_x.tres" id="6_flagship"]
+
+[resource]
+script = ExtResource("1_catalog")
+Phones = Array[ExtResource("2_phone")]([ExtResource("3_basic"), ExtResource("4_lite"), ExtResource("5_pro"), ExtResource("6_flagship")])
+StarterPhoneId = "basic_phone"

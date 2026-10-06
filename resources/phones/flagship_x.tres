@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="PhoneData" format=3]
+
+[ext_resource type="Script" path="res://scripts/phones/PhoneData.cs" id="1_phone"]
+
+[resource]
+script = ExtResource("1_phone")
+PhoneId = "flagship_x"
+DisplayName = "Flagship X"
+Description = "Top of the line: the busiest job feed and two extra refreshes a day."
+CaseColor = Color(0.12, 0.12, 0.15, 1)
+Price = 1200
+JobSlots = 7
+ExtraRefreshes = 2

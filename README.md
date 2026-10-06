@@ -58,9 +58,25 @@ The save file is `user://savegame.json`. It holds your wallet, statistics, drive
 - **New Game:** if a save exists, it first asks for confirmation and shows what will be lost. It then deletes the save, resets money, statistics and rating, and starts in a random city. That city is saved right away, so Continue brings you back to it.
 - **Not saved:** a job in progress. After Continue, you pick a new job from the board.
 
+### Phone and job refreshes
+
+Your **phone** decides how many jobs the Job Board shows, and the board's title shows its name. You start with a **Basic Phone that shows 3 jobs**. Better phones are sold in the shop's **Phones** tab. They are always in stock, cost no trade-in, and you can only buy one that is better than yours.
+
+| Phone | Jobs shown | Refreshes / day | Price |
+|---|---|---|---|
+| Basic Phone (starter) | 3 | 3 | - |
+| Smartphone Lite | 4 | 3 | $250 |
+| Smartphone Pro | 5 | 4 | $600 |
+| Flagship X | 7 | 5 | $1,200 |
+
+- **Time of day:** the number of jobs is still multiplied by the part of the day (evening ×0.6, night ×0.4, at least 1).
+- **Refresh button:** it is limited to **3 refreshes a day** (plus the phone's extras). The count resets at **midnight** on your computer's clock, and the button shows how many are left.
+- **Automatic regeneration is free:** after a delivery, a failed or cancelled job, buying a phone, or opening the board after driving more than 900 px. You are never stuck without jobs.
+- **Saving:** the phone and today's refresh count are saved (save version 8). New Game gives the Basic Phone back.
+
 ### Vehicle shop
 
-Open it with **Vehicle Shop** in the pause menu. The game stays paused while you shop, and **Esc** goes back to the pause menu.
+Open it with **Shop (vehicles & phones)** in the pause menu (**Vehicles** tab). The game stays paused while you shop, and **Esc** goes back to the pause menu.
 
 - **Stock:** the shop has **4 vehicles** and restocks at **00:00, 08:00 and 16:00** on your computer's clock. A countdown shows the next restock. The stock is generated from the date and the time slot, so reopening the shop (or restarting the game) in the same slot shows the same vehicles. A vehicle you bought shows **Sold** until the next restock, and this is saved too.
 - **Models:** each model has its own base stats and colour.
@@ -102,7 +118,7 @@ If you have a job in progress, the menu warns that it will be lost when you leav
 ## Gameplay loop
 
 0. The game starts on the main menu (`ui/main_menu.tscn`), which lists every city found in `data/cities/`. Press **Continue** to resume your save, or **New Game** to start fresh in a random city. The game ships with **Hanoi**, **Da Nang** and **Ho Chi Minh City**. The HUD shows the current city above the district name.
-1. The Job Board lists 5 jobs whose pickups are near the player.
+1. The Job Board lists jobs whose pickups are near the player. How many depends on your phone (3 to start).
 2. Accept a job. A pickup marker appears and an arrow around the bike points to it.
 3. Drive into the marker and press **E** to collect the package or pick up the passenger.
 4. Drive to the drop-off marker and press **E** again.
@@ -222,6 +238,7 @@ scripts/
   jobs/        JobManager (state machine), JobGenerator, JobTemplate, JobData, JobMarker, DeliveryResult
   economy/     Wallet (+ WalletEntry), PlayerStats, Reputation (driver rating)
   vehicles/    VehicleCatalog, OwnedVehicle (+ PerkRoll), VehiclePerks (option table), VehicleShop (stock rotation)
+  phones/      PhoneData, PhoneCatalog
   traffic/     TrafficManager (spawner), TrafficVehicle (AI road user), TrafficVehicleData, TrafficLights (signals + fines)
   weather/     WeatherSystem (picks and fades weather), WeatherData, RainOverlay
   daycycle/    DayCycle (real-clock time of day + daylight), TimePeriodData, NightLight (headlights / glows)
@@ -230,6 +247,7 @@ scripts/
 resources/
   jobs/        JobTemplate .tres files (one per job type): parcel, documents, fragile_electronics, food_delivery, passenger_ride
   vehicles/    vehicle_catalog.tres + one VehicleStats .tres per model (basic_scooter, city_scooter, cargo_moto, e_scooter, sport_bike)
+  phones/      phone_catalog.tres + one PhoneData .tres per phone (basic_phone, smartphone_lite, smartphone_pro, flagship_x)
   traffic/     TrafficVehicleData .tres files: bicycle, motorbike, car, bus
   weather/     WeatherData .tres files: sunny, cloudy, rain, storm
   day_periods/ TimePeriodData .tres files: morning, midday, afternoon, evening, night
@@ -257,6 +275,11 @@ All C# code is in the `ShipperSimulator` namespace. Godot requires each script f
   - **Shop stock:** `VehicleShop.GenerateOffers(catalog, rotationKey)` is deterministic. It uses `System.Random`, seeded with an FNV-1a hash of the key (`"2026-10-06#1"`), because `string.GetHashCode` differs between runs. Set `ShopPanel.RotationOverride` in the inspector to preview any rotation.
   - **Buying:** `GameManager.BuyVehicle()` charges the price minus the trade-in, marks the offer as sold for that rotation, switches vehicles with a full tank and saves.
   - **Options table:** the options, their ranges and their prices live in `VehiclePerks.All`.
+- **Phone and refreshes:**
+  - **Jobs per board:** `GameManager.Phone` (a `PhoneData` from `PhoneCatalog`) sets how many jobs `JobManager.RefreshJobs()` generates (`JobSlots` × the period's `JobCountMultiplier`).
+  - **Limited refreshes:** only the board's Refresh button (`EventBus.JobRefreshRequested` → `JobManager.OnRefreshRequested`) spends `GameManager.TryUseRefresh()`. The counter is tied to a local date (`yyyy-MM-dd`) and resets when the date changes. `GameManager.TodayOverride` fakes the date for testing.
+  - **Buying:** `GameManager.BuyPhone()` emits `PhoneChanged`, and the board then regenerates for free.
+  - **Shop tabs:** the shop's tabs share one card grid. A purchase waits for the confirmation dialog as a `Func<string?>`.
 - **Pausing:** the HUD pause button (`focus_mode = None`, so Space and Enter never press it while driving) emits `EventBus.PauseMenuRequested`, which `PauseMenu.Open()` listens to. `PauseMenu` (under the `UI` CanvasLayer) sets `SceneTree.Paused`. It is the only gameplay node with `ProcessMode.Always`, so it keeps handling input while everything else stops. `GameManager` also always processes, so that F5 works while paused, but it skips play time and autosave when the tree is paused. Before changing scene, the pause menu unpauses the tree.
 - **GameManager** (`GameManager.Instance`) owns the global state (`Wallet`, `PlayerStats`, `Reputation`, world references) and holds the helpers for payouts and formatting (`FormatMoney`, `FormatDistance`...). It also builds the data that goes into the save file.
 - **SaveManager** writes and reads versioned JSON (currently version 3) through `System.Text.Json`, using the DTOs in `scripts/save/SaveData.cs` with snake_case keys. Add migrations in `Migrate()`. The file is `SaveManager.SavePath`, which defaults to `user://savegame.json`. You can change it for save slots or for tests that must not touch the real save.
@@ -369,6 +392,7 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
 
 | Feature | Extension point |
 |---|---|
+| More phones | Add a `PhoneData` .tres to `phone_catalog.tres`. |
 | More parts of the day | Add a `TimePeriodData` .tres (with its `StartHour`) to `Periods` on the `DayCycle` node. |
 | Fatigue tuning | Change the exported "Fatigue" values on the Player in `scenes/player.tscn`, or the `FatigueMultiplier` of each period. |
 | More weather | Add a `WeatherData` .tres (for example fog: `SpeedMultiplier` 0.85 and a gray `Tint`) to `WeatherTypes` on the `Weather` node, then weight it in the city JSON. |
