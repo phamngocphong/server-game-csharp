@@ -34,8 +34,10 @@ public partial class CityMap : Node2D
 
     [Export] public CityRegionData Region { get; set; } = null!;
 
-    /// <summary>Seed used by the last Build(): Region.LayoutSeed, or a random one when that is 0.</summary>
+    /// <summary>Seed used by the last Build(): SeedOverride, else Region.LayoutSeed, or a random one when that is 0.</summary>
     public int ActiveSeed { get; private set; }
+    /// <summary>Set before Build() to rebuild a saved layout (wins over Region.LayoutSeed); 0 = not set.</summary>
+    public int SeedOverride { get; set; }
 
     public IReadOnlyList<DeliveryLocation> Locations => _locations;
     public IReadOnlyList<GasStation> GasStations => _gasStations;
@@ -57,7 +59,9 @@ public partial class CityMap : Node2D
             return;
         }
         Clear();
-        ActiveSeed = Region.LayoutSeed != 0 ? Region.LayoutSeed : (int)(GD.Randi() % int.MaxValue) + 1;
+        ActiveSeed = SeedOverride != 0 ? SeedOverride
+            : Region.LayoutSeed != 0 ? Region.LayoutSeed
+            : (int)(GD.Randi() % int.MaxValue) + 1;
         _rng.Seed = (ulong)ActiveSeed;
 
         _obstaclesRoot = new Node2D { Name = "Obstacles" };

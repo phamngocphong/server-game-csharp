@@ -28,14 +28,38 @@ It was tested with Godot 4.7.2 .NET and uses no APIs added after 4.4.
 | E | Pick up or deliver when inside a marker; also closes the result popup |
 | Tab / J | Open or close the Job Board |
 | F5 | Quick save |
+| Esc / P | Pause menu |
 
-The game autosaves after every delivery, every 60 s, and when you close the window.
-The save file is `user://savegame.json`. Delete it to reset your progress.
-Your wallet and stats carry over between cities. Your position is restored only when you load the same city with the same seed. Otherwise you start at the city centre.
+### Saving, Continue and New Game
+
+The game saves **automatically**:
+- after every delivery, failed job and cancelled job;
+- every 60 s;
+- when you close the window;
+- when you press **F5**.
+
+The save file is `user://savegame.json`. It holds your wallet, statistics, driver rating, fuel, city, layout seed and position.
+
+- **Continue:** returns to **the saved city, with the same layout and position**. The menu shows a summary of the save (city, money, deliveries, rating and when it was saved). The button is disabled when there is no save.
+- **New Game:** if a save exists, it first asks for confirmation and shows what will be lost. It then deletes the save, resets money, statistics and rating, and starts in a random city. That city is saved right away, so Continue brings you back to it.
+- **Not saved:** a job in progress. After Continue, you pick a new job from the board.
+
+### Pause menu
+
+Press **Esc** or **P** while driving. The whole game freezes: your bike, traffic, traffic lights, weather, job timers, fuel use and play time all stop. The menu shows a short summary (city, weather, money, deliveries, rating, fuel and play time) and these buttons:
+
+| Button | Action |
+|---|---|
+| Resume (Esc) | Continue playing |
+| Save Game | Save now. The menu confirms with "Game saved at 16:23" |
+| Save & Main Menu | Save and return to the main menu, where Continue resumes |
+| Save & Quit | Save and close the game |
+
+If you have a job in progress, the menu warns that it will be lost when you leave, because jobs are not saved.
 
 ## Gameplay loop
 
-0. The game starts on the main menu (`ui/main_menu.tscn`), which lists every city found in `data/cities/`. Press **Play** to load one of them at random. The game ships with **Hanoi**, **Da Nang** and **Ho Chi Minh City**. The HUD shows the current city above the district name.
+0. The game starts on the main menu (`ui/main_menu.tscn`), which lists every city found in `data/cities/`. Press **Continue** to resume your save, or **New Game** to start fresh in a random city. The game ships with **Hanoi**, **Da Nang** and **Ho Chi Minh City**. The HUD shows the current city above the district name.
 1. The Job Board lists 5 jobs whose pickups are near the player.
 2. Accept a job. A pickup marker appears and an arrow around the bike points to it.
 3. Drive into the marker and press **E** to collect the package or pick up the passenger.
@@ -126,7 +150,7 @@ Every finished or failed job gets a customer rating:
 autoload/      Singletons: EventBus.cs (signals), GameManager.cs (state), SaveManager.cs (persistence)
 scenes/        main, player, city_map, job_marker (.tscn)
 data/cities/   City definitions, one JSON file per city (see "Adding a city")
-ui/            main_menu (startup scene), hud, job_board, job_entry, delivery_result_popup (.tscn)
+ui/            main_menu (startup scene), pause_menu, hud, job_board, job_entry, delivery_result_popup (.tscn)
 scripts/
   Main.cs      Composition root: picks a random city, registers the world, loads the save, opens the board
   player/      Player (motorbike controller), BikeVisual, TargetIndicator, VehicleStats
@@ -136,7 +160,7 @@ scripts/
   traffic/     TrafficManager (spawner), TrafficVehicle (AI road user), TrafficVehicleData, TrafficLights (signals + fines)
   weather/     WeatherSystem (picks and fades weather), WeatherData, RainOverlay
   save/        SaveData.cs: JSON save DTOs
-  ui/          MainMenu, Hud, JobBoard, JobEntry, DeliveryResultPopup, StarRating (draws 0-5 stars)
+  ui/          MainMenu, PauseMenu, Hud, JobBoard, JobEntry, DeliveryResultPopup, StarRating (draws 0-5 stars)
 resources/
   jobs/        JobTemplate .tres files (one per job type): parcel, documents, fragile_electronics, food_delivery, passenger_ride
   vehicles/    VehicleStats .tres files
@@ -152,6 +176,7 @@ All C# code is in the `ShipperSimulator` namespace. Godot requires each script f
 - **EventBus** (`EventBus.Instance`) is the only connection between systems. It declares Godot `[Signal]`s. Listeners subscribe with C# event syntax, for example `EventBus.Instance.JobAccepted += OnJobAccepted;`. Senders call `EmitSignal(EventBus.SignalName.X, ...)`. UI scripts emit requests such as `JobAcceptRequested`, and `JobManager` emits results such as `JobStateChanged`, `JobDelivered`, `JobFailed`, `JobTimerUpdated` (every frame of a timed job), `JobBoardNoticeChanged` and `NavigationTargetChanged`. `GameManager` emits `BalanceChanged`, `StatsChanged` and `ReputationChanged`. Nothing in the UI holds a reference to `JobManager`.
   - Subscribe with **methods, not lambdas**, and **unsubscribe in `_ExitTree()`** with the same method (`-=`). The `EventBus` signals are declared in C#, so their C# events are plain delegates and Godot does **not** disconnect them when a node is freed. A handler you forget to remove keeps running after a scene change and throws `ObjectDisposedException`. Built-in Godot signals such as `Button.Pressed` are disconnected automatically.
 - **Scene lifecycle:** `Main._ExitTree()` calls `GameManager.UnregisterWorld()`, so autosave and play-time tracking stop when you leave the gameplay scene.
+- **Pausing:** `PauseMenu` (under the `UI` CanvasLayer) sets `SceneTree.Paused`. It is the only gameplay node with `ProcessMode.Always`, so it keeps handling input while everything else stops. `GameManager` also always processes, so that F5 works while paused, but it skips play time and autosave when the tree is paused. Before changing scene, the pause menu unpauses the tree.
 - **GameManager** (`GameManager.Instance`) owns the global state (`Wallet`, `PlayerStats`, `Reputation`, world references) and holds the helpers for payouts and formatting (`FormatMoney`, `FormatDistance`...). It also builds the data that goes into the save file.
 - **SaveManager** writes and reads versioned JSON (currently version 3) through `System.Text.Json`, using the DTOs in `scripts/save/SaveData.cs` with snake_case keys. Add migrations in `Migrate()`. The file is `SaveManager.SavePath`, which defaults to `user://savegame.json`. You can change it for save slots or for tests that must not touch the real save.
 - **Data resources** (`JobTemplate`, `VehicleStats`) are `[GlobalClass]` resources, so you can create and edit them in the inspector. In `.tres` files their properties use the C# names (PascalCase). `CityRegionData` and `DistrictData` are created at runtime by `CityLoader` from the city JSON files.
@@ -169,7 +194,10 @@ All C# code is in the `ShipperSimulator` namespace. Godot requires each script f
 - **CityMap** builds the city from a `CityRegionData` resource. Roads, sidewalks, parks and water are drawn in `_Draw()`. Buildings, trees and water blocks are `StaticBody2D` obstacles on physics layer 2. Every side of every block gets one curbside address, so there are `4 × GridSize.X × GridSize.Y` addresses.
   - **Seed:** each city sets `"seed"` in its JSON file (Hanoi 1010, Da Nang 2020, HCMC 3030). A fixed seed always produces the same layout. `0` produces a new random layout on every load. The seed actually used is `CityMap.ActiveSeed`, and it is saved together with `RegionId`.
   - **Block types:** for each block the generator rolls `DistrictData.WaterChance` first, then `ParkChance`, and otherwise fills the block with building lots. A district with `WaterChance = 1` becomes a river, for example `han_river` and `saigon_river`. You can still drive along the roads that cross it.
-- **City selection:** `Main._EnterTree()` loads every city with `CityLoader.LoadAll(Main.CitiesFolder)` and assigns a random one to `CityMap.Region` before `CityMap._Ready()` builds the map.
+- **City selection:** `Main._EnterTree()` loads every city with `CityLoader.LoadAll(Main.CitiesFolder)` before `CityMap._Ready()` builds the map.
+  - **Continue** (`GameManager.NextStart == StartMode.Continue`): `SaveManager.ReadSave()` reads the save without applying it. `Main` picks the saved city and sets `CityMap.SeedOverride` to the saved `layout_seed`, so the layout matches the saved position even if the city's seed is 0 (random) or has been changed in its JSON. If the saved city no longer exists, a random city is used.
+  - **New Game:** `GameManager.StartNewGame()` deletes the save and resets `Wallet`, `PlayerStats` and `Reputation` in memory. `Main` then picks a random city, saves at once and switches `NextStart` back to `Continue`.
+  - **Running `main.tscn` directly** (F6) behaves like Continue.
 
 Physics layers: 1 = player, 2 = world, 3 = interactables (markers), 4 = traffic. The player collides with layers 2 and 4 (`collision_mask = 10`).
 

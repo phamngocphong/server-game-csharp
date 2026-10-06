@@ -54,12 +54,27 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 
-[node name="PlayButton" type="Button" parent="Center/VBox"]
+[node name="ContinueButton" type="Button" parent="Center/VBox"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
-text = "Play"
+text = "Continue"
+
+[node name="SaveLabel" type="Label" parent="Center/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.8, 0.9, 1)
+theme_override_font_sizes/font_size = 14
+text = "No saved game yet."
+horizontal_alignment = 1
+
+[node name="NewGameButton" type="Button" parent="Center/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "New Game"
 
 [node name="QuitButton" type="Button" parent="Center/VBox"]
 unique_name_in_owner = true
@@ -71,5 +86,14 @@ text = "Quit"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.6, 0.66, 1)
 theme_override_font_sizes/font_size = 14
-text = "A random city is picked every time you press Play."
+text = "Continue returns to your saved city. New Game deletes the save and picks a random city."
 horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="ConfirmNewGame" type="ConfirmationDialog" parent="."]
+unique_name_in_owner = true
+title = "New Game"
+size = Vector2i(420, 180)
+ok_button_text = "Delete save and start"
+dialog_text = "Start a new game? Your saved progress will be deleted."
+dialog_autowrap = true

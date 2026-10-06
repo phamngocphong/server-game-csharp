@@ -55,25 +55,32 @@ public partial class SaveManager : Node
 
     public bool LoadGame()
     {
-        if (!HasSave())
+        var data = ReadSave();
+        if (data == null)
             return false;
+        GameManager.Instance.ApplySaveData(data.Game);
+        EventBus.Instance.EmitSignal(EventBus.SignalName.GameLoaded);
+        return true;
+    }
 
-        SaveFile? data;
+    /// <summary>
+    /// Reads and migrates the save without applying it (main menu summary, choosing the city
+    /// before the map is built). Null when there is no save or it is corrupted.
+    /// </summary>
+    public SaveFile? ReadSave()
+    {
+        if (!HasSave())
+            return null;
         try
         {
-            data = JsonSerializer.Deserialize<SaveFile>(FileAccess.GetFileAsString(SavePath), JsonOptions);
+            var data = JsonSerializer.Deserialize<SaveFile>(FileAccess.GetFileAsString(SavePath), JsonOptions);
+            return data == null ? null : Migrate(data);
         }
         catch (JsonException e)
         {
             GD.PushWarning($"SaveManager: save file is corrupted, ignoring it. {e.Message}");
-            return false;
+            return null;
         }
-        if (data == null)
-            return false;
-
-        GameManager.Instance.ApplySaveData(Migrate(data).Game);
-        EventBus.Instance.EmitSignal(EventBus.SignalName.GameLoaded);
-        return true;
     }
 
     public void DeleteSave()

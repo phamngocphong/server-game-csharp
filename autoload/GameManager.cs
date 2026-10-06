@@ -20,6 +20,17 @@ public partial class GameManager : Node
 
 	public static GameManager Instance { get; private set; } = null!;
 
+	public enum StartMode
+	{
+		/// <summary>Load the save (its city, layout seed and position) if there is one.</summary>
+		Continue,
+		/// <summary>Fresh progress in a random city; the old save is already deleted.</summary>
+		NewGame,
+	}
+
+	/// <summary>How the next gameplay scene starts; set by the main menu, read by Main.</summary>
+	public StartMode NextStart { get; set; } = StartMode.Continue;
+
 	public Wallet Wallet { get; } = new();
 	public PlayerStats Stats { get; } = new();
 	public Reputation Reputation { get; } = new();
@@ -42,7 +53,8 @@ public partial class GameManager : Node
 
 	public override void _Process(double delta)
 	{
-		if (Player == null)
+		// This node always processes (for quick save); play time and autosave stop while paused.
+		if (Player == null || GetTree().Paused)
 			return;
 		Stats.PlayTime += delta;
 		_autosaveTimer += delta;
@@ -77,6 +89,19 @@ public partial class GameManager : Node
 		CityMap = null;
 		Player = null;
 		_autosaveTimer = 0.0;
+	}
+
+	/// <summary>
+	/// "New game": deletes the save file and resets wallet, statistics and rating in memory.
+	/// The next gameplay scene starts in a random city.
+	/// </summary>
+	public void StartNewGame()
+	{
+		SaveManager.Instance.DeleteSave();
+		Wallet.LoadSaveData(new WalletSaveData());
+		Stats.LoadSaveData(new StatsSaveData());
+		Reputation.LoadSaveData(new ReputationSaveData());
+		NextStart = StartMode.NewGame;
 	}
 
 	public Vector2 GetPlayerPosition() => Player?.GlobalPosition ?? Vector2.Zero;
