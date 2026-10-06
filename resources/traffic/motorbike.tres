@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="TrafficVehicleData" format=3]
+
+[ext_resource type="Script" path="res://scripts/traffic/TrafficVehicleData.cs" id="1_vehicle"]
+
+[resource]
+script = ExtResource("1_vehicle")
+VehicleId = "motorbike"
+DisplayName = "Motorbike"
+Shape = 1
+Length = 40.0
+Width = 16.0
+Colors = PackedColorArray(0.85, 0.2, 0.2, 1, 0.2, 0.3, 0.75, 1, 0.15, 0.15, 0.18, 1, 0.95, 0.95, 0.95, 1, 0.3, 0.65, 0.35, 1)
+MinSpeed = 160.0
+MaxSpeed = 240.0
+CollisionScore = 2
+SpawnWeight = 6.0

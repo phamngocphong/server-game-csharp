@@ -119,5 +119,14 @@
       "Vo Nguyen Giap St",
       "Truong Sa St"
     ]
+  },
+  "traffic": {
+    "count": -1,
+    "weights": {
+      "motorbike": 5,
+      "car": 3,
+      "bicycle": 1,
+      "bus": 0.5
+    }
   }
 }

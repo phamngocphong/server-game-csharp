@@ -29,6 +29,12 @@ public partial class CityRegionData : Resource
 	[Export] public Color ParkColor { get; set; } = new(0.3f, 0.55f, 0.3f);
 	[Export] public Color WaterColor { get; set; } = new(0.2f, 0.42f, 0.6f);
 
+	[ExportGroup("Traffic")]
+	/// <summary>Number of AI vehicles; -1 = automatic (TrafficManager.AutoDensity per block).</summary>
+	[Export] public int TrafficCount { get; set; } = -1;
+	/// <summary>Spawn weight per TrafficVehicleData.VehicleId; missing ids use the vehicle's own SpawnWeight.</summary>
+	[Export] public Godot.Collections.Dictionary<string, float> TrafficWeights { get; set; } = new();
+
 	[ExportGroup("Content")]
 	/// <summary>Place name used for addresses next to water blocks.</summary>
 	[Export] public string WaterPlaceName { get; set; } = "Waterfront";

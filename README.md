@@ -58,6 +58,19 @@ Timed jobs show their limits on the Job Board card (`TIMED Pickup 0:20 - Ride 0:
 - **How the limits are calculated:** `limit = BaseTime + route km × TimePerKm`, rounded up to 5 s. The pickup limit is recalculated from where you are when you press Accept.
 - **Tips:** if you deliver within `TipTimeShare` of the drop-off limit (50% by default), the customer adds a tip of `TipShare` × reward (20% for food, 25% for rides). The job card shows `Tip +$7 if done within 0:07`. The tip is a separate wallet entry, and the board shows the total in `Stats.TotalTips`.
 
+### Traffic and crashes
+
+Bicycles, motorbikes, cars and buses drive on the right-hand lane of every road. At each intersection they go straight or turn. They brake for you and for vehicles ahead going the same way.
+
+Each vehicle type has a **collision score**. If you hit one at a closing speed of about 11 km/h or more, you are **stunned** and cannot drive for `score × 0.6 s`. The bike blinks red, the HUD shows `CRASHED 1.8 s`, and your job timers keep running. After a stun you get 1 s of immunity so crashes cannot chain.
+
+| Vehicle | Collision score | Stun |
+|---|---|---|
+| Bicycle | 1 | 0.6 s |
+| Motorbike | 2 | 1.2 s |
+| Car | 4 | 2.4 s |
+| Bus | 6 | 3.6 s |
+
 ### Driver rating (1-5 stars)
 
 Every finished or failed job gets a customer rating:
@@ -88,11 +101,13 @@ scripts/
   map/         CityMap (procedural builder), CityLoader + CityConfig (JSON -> CityRegionData), Building, CityRegionData, DistrictData, DeliveryLocation
   jobs/        JobManager (state machine), JobGenerator, JobTemplate, JobData, JobMarker, DeliveryResult
   economy/     Wallet (+ WalletEntry), PlayerStats, Reputation (driver rating)
+  traffic/     TrafficManager (spawner), TrafficVehicle (AI road user), TrafficVehicleData
   save/        SaveData.cs: JSON save DTOs
   ui/          MainMenu, Hud, JobBoard, JobEntry, DeliveryResultPopup, StarRating (draws 0-5 stars)
 resources/
   jobs/        JobTemplate .tres files (one per job type): parcel, documents, fragile_electronics, food_delivery, passenger_ride
   vehicles/    VehicleStats .tres files
+  traffic/     TrafficVehicleData .tres files: bicycle, motorbike, car, bus
   ui/          ui_theme.tres
 ```
 
@@ -122,7 +137,14 @@ All C# code is in the `ShipperSimulator` namespace. Godot requires each script f
   - **Block types:** for each block the generator rolls `DistrictData.WaterChance` first, then `ParkChance`, and otherwise fills the block with building lots. A district with `WaterChance = 1` becomes a river, for example `han_river` and `saigon_river`. You can still drive along the roads that cross it.
 - **City selection:** `Main._EnterTree()` loads every city with `CityLoader.LoadAll(Main.CitiesFolder)` and assigns a random one to `CityMap.Region` before `CityMap._Ready()` builds the map.
 
-Physics layers: 1 = player, 2 = world, 3 = interactables (markers).
+Physics layers: 1 = player, 2 = world, 3 = interactables (markers), 4 = traffic. The player collides with layers 2 and 4 (`collision_mask = 10`).
+
+- **Traffic:**
+  - **Spawning:** `TrafficManager` (the `Traffic` node in `main.tscn`) spawns `TrafficVehicle`s after the map is built. It never spawns them near the player's spawn point.
+  - **Driving:** each vehicle is an `AnimatableBody2D` on layer 4 that is moved by setting `Position`, with `SyncToPhysics` off. It follows waypoints from the entry point of one intersection to the exit point of the next.
+  - **Braking:** an `Area2D` sensor in front of each vehicle brakes for the player and for traffic heading the same way. Crossing traffic is ignored, so vehicles can briefly overlap in the middle of an intersection. If a vehicle waits behind other traffic for more than 3 s, it ignores that traffic for a moment, which clears jams.
+  - **Crashes:** `Player.CheckTrafficCrash()` compares the closing speed along the contact normal with `MinCrashSpeed` and then calls `Crash()`. That sets `StunTimeLeft`, pushes the bike back, makes the vehicle stop for 1.5 s and emits `EventBus.PlayerCrashed`.
+  - **Tuning:** vehicle sizes, colors, speeds, `CollisionScore` and `SpawnWeight` are in `resources/traffic/*.tres`. The seconds per collision point are set by `TrafficVehicleData.StunSecondsPerPoint`.
 
 ## Adding a city
 
@@ -151,6 +173,10 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
   "streets": {
     "horizontal": ["..."],          // rows + 1 names, top to bottom (shorter lists repeat)
     "vertical": ["..."]             // columns + 1 names, left to right
+  },
+  "traffic": {
+    "count": -1,                    // number of AI vehicles; -1 = about 0.6 per block
+    "weights": { "motorbike": 8, "car": 2, "bicycle": 3, "bus": 0.5 }  // ids from resources/traffic
   }
 }
 ```
@@ -163,7 +189,8 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
 |---|---|
 | Fuel | Add `FuelCapacity` and `Consumption` to `VehicleStats`. Add a `FuelSystem` node that reads the player's speed and calls `Wallet.Spend()` at gas stations (a new location type in `CityMap`). |
 | Weather | Add a `WeatherManager` autoload. Have it adjust `VehicleStats.Grip` and return a bonus from `GameManager.GetRewardMultiplier()`. |
-| Traffic | Add `scenes/traffic_vehicle.tscn` on physics layer 2. Use `CityMap.GetIntersection()` and the road grid for paths. |
+| More traffic types | Add a `TrafficVehicleData` .tres (for example a truck: `Shape = Bus`, a higher `CollisionScore`) and add it to `VehicleTypes` on the `Traffic` node. Cities can weight it by `VehicleId`. |
+| Crash consequences | Listen to `EventBus.PlayerCrashed`, for example to damage fragile cargo, upset passengers (`Reputation`) or count crashes in `PlayerStats`. |
 | Reputation | Add a stat to `PlayerStats` and `StatsSaveData`, and adjust it in `GameManager.CompleteDelivery()`. Expose it through `GetRewardMultiplier()` and add fields to `DeliveryResult`. |
 | Vehicle upgrades | Add more `VehicleStats` .tres files, buy them with `Wallet.Spend()`, and swap `Player.VehicleStats`. Save the owned vehicle id in the save DTOs. |
 | More cities | Add a JSON file to `data/cities/` (see "Adding a city"). A city picker on the menu could pass the chosen `code` to `Main` in place of the random pick in `Main._EnterTree()`. |

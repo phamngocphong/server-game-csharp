@@ -108,5 +108,14 @@
       "Hang Bai St",
       "Tran Quang Khai St"
     ]
+  },
+  "traffic": {
+    "count": -1,
+    "weights": {
+      "motorbike": 8,
+      "bicycle": 3,
+      "car": 2,
+      "bus": 0.5
+    }
   }
 }

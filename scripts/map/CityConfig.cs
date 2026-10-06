@@ -19,6 +19,15 @@ public sealed class CityConfig
     public string WaterPlaceName { get; set; } = "Waterfront";
     public List<DistrictConfig> Districts { get; set; } = new();
     public CityStreetsConfig Streets { get; set; } = new();
+    public CityTrafficConfig Traffic { get; set; } = new();
+}
+
+public sealed class CityTrafficConfig
+{
+    /// <summary>Number of AI vehicles; -1 = automatic (about 0.6 per city block).</summary>
+    public int Count { get; set; } = -1;
+    /// <summary>Relative spawn chance per vehicle id (bicycle, motorbike, car, bus...); missing ids use their default.</summary>
+    public Dictionary<string, float> Weights { get; set; } = new();
 }
 
 public sealed class CityGridConfig

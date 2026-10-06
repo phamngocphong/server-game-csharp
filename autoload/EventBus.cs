@@ -36,6 +36,8 @@ public partial class EventBus : Node
 	// --- Navigation / interaction ---------------------------------------------
 	[Signal] public delegate void NavigationTargetChangedEventHandler(Vector2 target, string label, Color color);
 	[Signal] public delegate void NavigationTargetClearedEventHandler();
+	/// <summary>The player crashed into traffic and cannot drive for <paramref name="stunSeconds"/>.</summary>
+	[Signal] public delegate void PlayerCrashedEventHandler(string vehicleName, int collisionScore, float stunSeconds);
 	/// <summary>Empty text hides the prompt.</summary>
 	[Signal] public delegate void InteractionPromptChangedEventHandler(string text);
 

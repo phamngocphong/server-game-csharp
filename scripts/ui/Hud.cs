@@ -62,6 +62,7 @@ public partial class Hud : Control
         bus.NavigationTargetCleared += OnTargetCleared;
         bus.InteractionPromptChanged += OnPromptChanged;
         bus.NotificationRequested += ShowToast;
+        bus.PlayerCrashed += OnPlayerCrashed;
         _cancelButton.Pressed += OnCancelPressed;
 
         _activeJobPanel.Hide();
@@ -86,6 +87,7 @@ public partial class Hud : Control
         bus.NavigationTargetCleared -= OnTargetCleared;
         bus.InteractionPromptChanged -= OnPromptChanged;
         bus.NotificationRequested -= ShowToast;
+        bus.PlayerCrashed -= OnPlayerCrashed;
     }
 
     public override void _Process(double delta)
@@ -93,7 +95,16 @@ public partial class Hud : Control
         var player = GameManager.Instance.Player;
         if (player == null)
             return;
-        _speedLabel.Text = $"{Mathf.RoundToInt(player.GetSpeedKmh())} km/h";
+        if (player.IsStunned)
+        {
+            _speedLabel.Text = $"CRASHED  {player.StunTimeLeft.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} s";
+            _speedLabel.Modulate = new Color(1f, 0.35f, 0.3f);
+        }
+        else
+        {
+            _speedLabel.Text = $"{Mathf.RoundToInt(player.GetSpeedKmh())} km/h";
+            _speedLabel.Modulate = Colors.White;
+        }
         _cityLabel.Text = GameManager.Instance.CityMap?.Region.DisplayName ?? "";
         _districtLabel.Text = GameManager.Instance.GetCurrentDistrict()?.DisplayName ?? "";
         if (_hasTarget && _activeJobPanel.Visible)
@@ -127,6 +138,9 @@ public partial class Hud : Control
 
     private void RefreshStats() =>
         _deliveriesLabel.Text = $"Deliveries: {GameManager.Instance.Stats.TotalDeliveries}";
+
+    private void OnPlayerCrashed(string vehicleName, int collisionScore, float stunSeconds) =>
+        ShowToast($"Crashed into a {vehicleName}! (impact {collisionScore}) - stunned {stunSeconds.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} s");
 
     private void RefreshRating()
     {

@@ -14,11 +14,22 @@
 [ext_resource type="PackedScene" path="res://ui/job_board.tscn" id="12_board"]
 [ext_resource type="PackedScene" path="res://ui/delivery_result_popup.tscn" id="13_popup"]
 [ext_resource type="Resource" path="res://resources/jobs/passenger_ride.tres" id="14_passenger"]
+[ext_resource type="Script" path="res://scripts/traffic/TrafficManager.cs" id="15_traffic"]
+[ext_resource type="Script" path="res://scripts/traffic/TrafficVehicleData.cs" id="16_vehicle_data"]
+[ext_resource type="Resource" path="res://resources/traffic/bicycle.tres" id="17_bicycle"]
+[ext_resource type="Resource" path="res://resources/traffic/motorbike.tres" id="18_motorbike"]
+[ext_resource type="Resource" path="res://resources/traffic/car.tres" id="19_car"]
+[ext_resource type="Resource" path="res://resources/traffic/bus.tres" id="20_bus"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
 
 [node name="CityMap" parent="." instance=ExtResource("2_map")]
+
+[node name="Traffic" type="Node2D" parent="." node_paths=PackedStringArray("Map")]
+script = ExtResource("15_traffic")
+Map = NodePath("../CityMap")
+VehicleTypes = Array[ExtResource("16_vehicle_data")]([ExtResource("17_bicycle"), ExtResource("18_motorbike"), ExtResource("19_car"), ExtResource("20_bus")])
 
 [node name="Markers" type="Node2D" parent="."]
 

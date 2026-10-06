@@ -98,7 +98,10 @@ public static class CityLoader
             WaterPlaceName = c.WaterPlaceName,
             HorizontalStreetNames = c.Streets.Horizontal.ToArray(),
             VerticalStreetNames = c.Streets.Vertical.ToArray(),
+            TrafficCount = c.Traffic.Count,
         };
+        foreach (var (id, weight) in c.Traffic.Weights)
+            region.TrafficWeights[id] = weight;
         foreach (var d in c.Districts)
         {
             region.Districts.Add(new DistrictData
@@ -160,6 +163,10 @@ public static class CityLoader
         }
         if (c.Districts.Select(d => d.Code).Distinct().Count() != c.Districts.Count)
             errors.Add("district codes must be unique.");
+        if (c.Traffic.Count > 400)
+            errors.Add("traffic.count must be 400 or less (-1 = automatic).");
+        if (c.Traffic.Weights.Values.Any(w => w < 0f))
+            errors.Add("traffic.weights cannot be negative.");
         return errors;
     }
 

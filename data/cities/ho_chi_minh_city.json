@@ -140,5 +140,14 @@
       "Xa Lo Ha Noi",
       "Mai Chi Tho Blvd"
     ]
+  },
+  "traffic": {
+    "count": 80,
+    "weights": {
+      "motorbike": 9,
+      "car": 3,
+      "bicycle": 1,
+      "bus": 1
+    }
   }
 }

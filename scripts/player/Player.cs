@@ -5,18 +5,30 @@ namespace ShipperSimulator;
 /// <summary>
 /// Top-down motorbike controller.
 /// W/S throttle and brake/reverse, A/D steer (needs speed to turn), Space handbrake.
+/// Crashing into traffic stuns the player (no control) for the vehicle's
+/// <see cref="TrafficVehicleData.StunSeconds"/>.
 /// </summary>
 public partial class Player : CharacterBody2D
 {
     private const float CameraLookahead = 0.35f;
     private const float CameraZoomSlow = 1f;
     private const float CameraZoomFast = 0.8f;
+    /// <summary>Closing speed (px/s, about 11 km/h) needed for a hit to count as a crash.</summary>
+    private const float MinCrashSpeed = 90f;
+    /// <summary>Seconds after a stun during which new crashes are ignored.</summary>
+    private const float CrashImmunity = 1f;
+    private const float CrashKnockback = 140f;
 
     [Export] public VehicleStats VehicleStats { get; set; } = null!;
 
     public bool ControlsEnabled { get; private set; } = true;
     /// <summary>Signed speed along the heading (px/s).</summary>
     public float ForwardSpeed { get; private set; }
+    /// <summary>Seconds of stun left after a crash; 0 = can drive.</summary>
+    public float StunTimeLeft { get; private set; }
+    public bool IsStunned => StunTimeLeft > 0f;
+
+    private float _crashImmunity;
 
     private BikeVisual _visual = null!;
     private Camera2D _camera = null!;
@@ -50,10 +62,21 @@ public partial class Player : CharacterBody2D
     public override void _PhysicsProcess(double delta)
     {
         var dt = (float)delta;
+        if (StunTimeLeft > 0f)
+        {
+            StunTimeLeft = Mathf.Max(0f, StunTimeLeft - dt);
+            if (StunTimeLeft <= 0f)
+                _crashImmunity = CrashImmunity;
+        }
+        else
+        {
+            _crashImmunity = Mathf.Max(0f, _crashImmunity - dt);
+        }
+
         var throttle = 0f;
         var steer = 0f;
         var handbrake = false;
-        if (ControlsEnabled)
+        if (ControlsEnabled && !IsStunned)
         {
             throttle = Input.GetAxis("move_down", "move_up");
             steer = Input.GetAxis("move_left", "move_right");
@@ -66,8 +89,10 @@ public partial class Player : CharacterBody2D
         var forward = Vector2.Right.Rotated(Rotation);
         var grip = handbrake ? VehicleStats.HandbrakeGrip : VehicleStats.Grip;
         Velocity = Velocity.Lerp(forward * ForwardSpeed, Mathf.Clamp(grip * dt, 0f, 1f));
+        var velocityBefore = Velocity;
         MoveAndSlide();
-        if (GetSlideCollisionCount() > 0)
+        CheckTrafficCrash(velocityBefore);
+        if (GetSlideCollisionCount() > 0 && !IsStunned)
         {
             // Hitting a wall eats the speed that went into it.
             ForwardSpeed = Mathf.Clamp(Velocity.Dot(forward), -VehicleStats.ReverseMaxSpeed, VehicleStats.MaxSpeed);
@@ -105,6 +130,35 @@ public partial class Player : CharacterBody2D
         _camera.ResetSmoothing();
     }
 
+    private void CheckTrafficCrash(Vector2 velocityBefore)
+    {
+        if (IsStunned || _crashImmunity > 0f)
+            return;
+        for (var i = 0; i < GetSlideCollisionCount(); i++)
+        {
+            var collision = GetSlideCollision(i);
+            if (collision.GetCollider() is not TrafficVehicle vehicle)
+                continue;
+            // Closing speed along the contact normal (the normal points from the vehicle to the player).
+            var normal = collision.GetNormal();
+            var impact = (velocityBefore - vehicle.CurrentVelocity).Dot(-normal);
+            if (impact < MinCrashSpeed)
+                continue;
+            Crash(vehicle, normal);
+            return;
+        }
+    }
+
+    private void Crash(TrafficVehicle vehicle, Vector2 normal)
+    {
+        var data = vehicle.Data;
+        StunTimeLeft = data.StunSeconds;
+        ForwardSpeed = 0f;
+        Velocity = normal * CrashKnockback;
+        vehicle.OnHitByPlayer();
+        EventBus.Instance.EmitSignal(EventBus.SignalName.PlayerCrashed, data.DisplayName, data.CollisionScore, data.StunSeconds);
+    }
+
     private void UpdateSpeed(float throttle, bool handbrake, float dt)
     {
         var s = VehicleStats;
@@ -140,6 +194,9 @@ public partial class Player : CharacterBody2D
     private void UpdateVisuals(float steer, float dt)
     {
         _visual.Lean = Mathf.Lerp(_visual.Lean, steer * GetSpeedRatio(), Mathf.Clamp(8f * dt, 0f, 1f));
+        // Blink while stunned.
+        var blink = IsStunned && (int)(StunTimeLeft * 8f) % 2 == 0;
+        _visual.Modulate = blink ? new Color(1f, 0.45f, 0.45f, 0.6f) : Colors.White;
     }
 
     private void UpdateCamera(float dt)
