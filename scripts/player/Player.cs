@@ -174,11 +174,15 @@ public partial class Player : CharacterBody2D
         Fuel = Mathf.Min(Fuel, stats.FuelCapacity);
     }
 
-    /// <summary>Eat and rest (rest stop): no control for RestDuration while fatigue drops to 0.</summary>
-    public void StartRest()
+    /// <summary>
+    /// Rest (rest stop, or home with its own duration): no control while fatigue drops to 0
+    /// over <paramref name="seconds"/> (default <see cref="RestDuration"/>).
+    /// </summary>
+    public void StartRest(float seconds = -1f)
     {
-        _restTimeLeft = RestDuration;
-        _restRate = Fatigue / Mathf.Max(RestDuration, 0.1f);
+        var duration = seconds > 0f ? seconds : RestDuration;
+        _restTimeLeft = duration;
+        _restRate = Fatigue / Mathf.Max(duration, 0.1f);
         ForwardSpeed = 0f;
         Velocity = Vector2.Zero;
     }

@@ -17,7 +17,7 @@ public partial class SaveManager : Node
     /// <summary>Preferences file (touch controls...); separate from the save so New Game keeps it.</summary>
     public string SettingsPath { get; set; } = "user://settings.cfg";
     public GameSettings Settings { get; private set; } = new();
-    public const int SaveVersion = 8;
+    public const int SaveVersion = 9;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -130,6 +130,8 @@ public partial class SaveManager : Node
         // v5 -> v6: adds vehicle (missing = starter vehicle) and shop (sold offers of the rotation).
         // v6 -> v7: adds fatigue (default 0) and total_rest_spent (default 0).
         // v7 -> v8: adds phone_id (empty = starter phone), refresh_day and refreshes_used.
+        // v8 -> v9: adds housing_id (empty = starter home), last_billed_month (empty = this month,
+        // so nobody is billed just for updating) and total_housing_spent.
         data.Version = SaveVersion;
         return data;
     }

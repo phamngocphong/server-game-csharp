@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="HousingCatalog" format=3]
+
+[ext_resource type="Script" path="res://scripts/housing/HousingCatalog.cs" id="1_catalog"]
+[ext_resource type="Script" path="res://scripts/housing/HousingData.cs" id="2_housing"]
+[ext_resource type="Resource" path="res://resources/housing/shared_room.tres" id="3_shared"]
+[ext_resource type="Resource" path="res://resources/housing/studio_room.tres" id="4_studio"]
+[ext_resource type="Resource" path="res://resources/housing/apartment.tres" id="5_apartment"]
+[ext_resource type="Resource" path="res://resources/housing/villa.tres" id="6_villa"]
+
+[resource]
+script = ExtResource("1_catalog")
+Homes = Array[ExtResource("2_housing")]([ExtResource("3_shared"), ExtResource("4_studio"), ExtResource("5_apartment"), ExtResource("6_villa")])
+StarterHousingId = "shared_room"

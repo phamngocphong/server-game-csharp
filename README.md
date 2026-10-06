@@ -58,6 +58,21 @@ The save file is `user://savegame.json`. It holds your wallet, statistics, drive
 - **New Game:** if a save exists, it first asks for confirmation and shows what will be lost. It then deletes the save, resets money, statistics and rating, and starts in a random city. That city is saved right away, so Continue brings you back to it.
 - **Not saved:** a job in progress. After Continue, you pick a new job from the board.
 
+### Housing
+
+You live somewhere, and it costs money at the **start of every calendar month** on your computer's clock. The charge happens the first time the game runs in a new month. Months you did not play are not charged, and the month you start a new game in is free. The wallet can go negative.
+
+| Home | Tenure | Price | Every month | Rest at home (fatigue to 0) |
+|---|---|---|---|---|
+| Shared Room (starter) | rent | - | $120 rent | 12 s |
+| Studio Room | rent | first month's rent when you move in | $300 rent | 7 s |
+| Apartment | buy | $6,000 | $80 utilities | 4 s |
+| Villa | buy | $18,000 | $150 utilities | 2 s |
+
+- **Your home on the map:** it is a pink **HOME** stop, away from the gas stations and rest stops. Drive in and press **E** to **rest for free**. The better the home, the faster you recover. A paid rest stop takes 4 s and costs $6-8. When you are tired, the HUD shows the distance to both.
+- **Moving:** move up in the shop's **Housing** tab, and you can only move to a better home. Renting a better room costs its first month right away. Buying a home costs the price once, then only the (lower) utilities every month.
+- **Records:** your home and the last billed month are saved (save version 9). The Job Board shows the total spent on housing. New Game puts you back in the Shared Room.
+
 ### Phone and job refreshes
 
 Your **phone** decides how many jobs the Job Board shows, and the board's title shows its name. You start with a **Basic Phone that shows 3 jobs**. Better phones are sold in the shop's **Phones** tab. They are always in stock, cost no trade-in, and you can only buy one that is better than yours.
@@ -76,7 +91,7 @@ Your **phone** decides how many jobs the Job Board shows, and the board's title 
 
 ### Vehicle shop
 
-Open it with **Shop (vehicles & phones)** in the pause menu (**Vehicles** tab). The game stays paused while you shop, and **Esc** goes back to the pause menu.
+Open it with **Shop (vehicles, phones, housing)** in the pause menu (**Vehicles** tab). The game stays paused while you shop, and **Esc** goes back to the pause menu.
 
 - **Stock:** the shop has **4 vehicles** and restocks at **00:00, 08:00 and 16:00** on your computer's clock. A countdown shows the next restock. The stock is generated from the date and the time slot, so reopening the shop (or restarting the game) in the same slot shows the same vehicles. A vehicle you bought shows **Sold** until the next restock, and this is saved too.
 - **Models:** each model has its own base stats and colour.
@@ -238,11 +253,12 @@ ui/            main_menu (startup scene), pause_menu, shop_panel, hud, job_board
 scripts/
   Main.cs      Composition root: picks a random city, registers the world, loads the save, opens the board
   player/      Player (motorbike controller), BikeVisual, TargetIndicator, VehicleStats
-  map/         CityMap (procedural builder), ServiceStop (base of GasStation / RestStop), CityLoader + CityConfig (JSON -> CityRegionData), Building, CityRegionData, DistrictData, DeliveryLocation
+  map/         CityMap (procedural builder), ServiceStop (base of GasStation / RestStop / HomeStop), CityLoader + CityConfig (JSON -> CityRegionData), Building, CityRegionData, DistrictData, DeliveryLocation
   jobs/        JobManager (state machine), JobGenerator, JobTemplate, JobData, JobMarker, DeliveryResult
   economy/     Wallet (+ WalletEntry), PlayerStats, Reputation (driver rating)
   vehicles/    VehicleCatalog, OwnedVehicle (+ PerkRoll), VehiclePerks (option table), VehicleShop (stock rotation)
   phones/      PhoneData, PhoneCatalog
+  housing/     HousingData, HousingCatalog
   traffic/     TrafficManager (spawner), TrafficVehicle (AI road user), TrafficVehicleData, TrafficLights (signals + fines)
   weather/     WeatherSystem (picks and fades weather), WeatherData, RainOverlay
   daycycle/    DayCycle (real-clock time of day + daylight), TimePeriodData, NightLight (headlights / glows)
@@ -252,6 +268,7 @@ resources/
   jobs/        JobTemplate .tres files (one per job type): parcel, documents, fragile_electronics, food_delivery, passenger_ride
   vehicles/    vehicle_catalog.tres + one VehicleStats .tres per model (basic_scooter, city_scooter, cargo_moto, e_scooter, sport_bike)
   phones/      phone_catalog.tres + one PhoneData .tres per phone (basic_phone, smartphone_lite, smartphone_pro, flagship_x)
+  housing/     housing_catalog.tres + one HousingData .tres per home (shared_room, studio_room, apartment, villa)
   traffic/     TrafficVehicleData .tres files: bicycle, motorbike, car, bus
   weather/     WeatherData .tres files: sunny, cloudy, rain, storm
   day_periods/ TimePeriodData .tres files: morning, midday, afternoon, evening, night
@@ -280,6 +297,11 @@ All C# code is in the `ShipperSimulator` namespace. Godot requires each script f
   - **Buying:** `GameManager.BuyVehicle()` charges the price minus the trade-in, marks the offer as sold for that rotation, switches vehicles with a full tank and saves.
   - **Options table:** the options, their ranges and their prices live in `VehiclePerks.All`.
 - **Job quality and tiers:** `JobGenerator.GenerateJobs()` builds a pool (`CandidateFactor` × slots), sorts it by `Goodness()` and picks with `index = random^skew × poolSize`, where `skew = 2^((rating - 3) / 2)`. For each slot, `PremiumChance(rating)` and `SpecialChance(rating)` are rolled first, then `BuildPremium()` / `BuildSpecial()` produce the job. `JobData.Tier` and `RatingBonus` mark them. Special jobs clear their time limits, and `GameManager.CompleteDelivery()` calls `Reputation.RecordBonus()`. The multipliers, chances and distances are the constants at the top of `JobGenerator`.
+- **Housing:**
+  - **Current home:** `GameManager.Housing` is a `HousingData` from `HousingCatalog`, with `Tenure` (Rent / Own), `Tier`, `BuyPrice`, `MonthlyCost` and `RestSeconds`.
+  - **Monthly charge:** `GameManager.ChargeMonthlyHousing()` runs every 5 s while playing. It charges once whenever `CurrentMonth` (from `Today`, which `TodayOverride` can fake) differs from the saved `LastBilledMonth`.
+  - **Moving:** `GameManager.BuyHousing()` handles moving and marks the month as paid.
+  - **Resting at home:** `CityMap.BuildHome()` places one `HomeStop` per city. It redraws on `EventBus.HousingChanged`, and its E calls `GameManager.RestAtHome()`, which runs `Player.StartRest(Housing.RestSeconds)`.
 - **Phone and refreshes:**
   - **Jobs per board:** `GameManager.Phone` (a `PhoneData` from `PhoneCatalog`) sets how many jobs `JobManager.RefreshJobs()` generates (`JobSlots` × the period's `JobCountMultiplier`).
   - **Limited refreshes:** only the board's Refresh button (`EventBus.JobRefreshRequested` → `JobManager.OnRefreshRequested`) spends `GameManager.TryUseRefresh()`. The counter is tied to a local date (`yyyy-MM-dd`) and resets when the date changes. `GameManager.TodayOverride` fakes the date for testing.
@@ -397,6 +419,7 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
 
 | Feature | Extension point |
 |---|---|
+| More homes | Add a `HousingData` .tres (with a higher `Tier`) to `housing_catalog.tres`. |
 | More phones | Add a `PhoneData` .tres to `phone_catalog.tres`. |
 | More parts of the day | Add a `TimePeriodData` .tres (with its `StartHour`) to `Periods` on the `DayCycle` node. |
 | Fatigue tuning | Change the exported "Fatigue" values on the Player in `scenes/player.tscn`, or the `FatigueMultiplier` of each period. |

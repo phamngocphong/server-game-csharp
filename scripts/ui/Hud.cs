@@ -187,7 +187,11 @@ public partial class Hud : Control
             : null;
         _restLabel.Visible = stop != null;
         if (stop != null)
-            _restLabel.Text = $"Nearest rest stop: {GameManager.FormatDistance(JobGenerator.RouteDistance(player.GlobalPosition, stop.GlobalPosition))}";
+        {
+            var home = GameManager.Instance.CityMap?.Home;
+            _restLabel.Text = $"Rest stop: {GameManager.FormatDistance(JobGenerator.RouteDistance(player.GlobalPosition, stop.GlobalPosition))}" +
+                (home != null ? $"   -   Home (free): {GameManager.FormatDistance(JobGenerator.RouteDistance(player.GlobalPosition, home.GlobalPosition))}" : "");
+        }
     }
 
     private void UpdateFuel(Player player)

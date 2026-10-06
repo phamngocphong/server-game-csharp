@@ -43,6 +43,8 @@ public partial class CityMap : Node2D
     public IReadOnlyList<DeliveryLocation> Locations => _locations;
     public IReadOnlyList<GasStation> GasStations => _gasStations;
     public IReadOnlyList<RestStop> RestStops => _restStops;
+    /// <summary>The player's home (one per city).</summary>
+    public HomeStop? Home { get; private set; }
 
     private readonly List<DeliveryLocation> _locations = new();
     private readonly List<GasStation> _gasStations = new();
@@ -78,6 +80,7 @@ public partial class CityMap : Node2D
         BuildBoundaries();
         BuildGasStations();
         BuildRestStops();
+        BuildHome();
         QueueRedraw();
         EmitSignal(SignalName.MapBuilt);
     }
@@ -154,6 +157,7 @@ public partial class CityMap : Node2D
         _blocks.Clear();
         _gasStations.Clear();
         _restStops.Clear();
+        Home = null;
         _obstaclesRoot?.QueueFree();
         _obstaclesRoot = null;
     }
@@ -317,6 +321,18 @@ public partial class CityMap : Node2D
             stop.Setup($"Rest Stop, {loc.StreetName}", loc.Position);
             _obstaclesRoot!.AddChild(stop);
             _restStops.Add(stop);
+        }
+    }
+
+    /// <summary>One curbside address, away from gas stations and rest stops, becomes the player's home.</summary>
+    private void BuildHome()
+    {
+        var avoid = _gasStations.Select(s => s.Position).Concat(_restStops.Select(s => s.Position)).ToList();
+        foreach (var loc in TakeSpreadLocations(1, (ulong)ActiveSeed * 41UL + 5UL, avoid))
+        {
+            Home = new HomeStop { Name = "Home" };
+            Home.Setup($"Home, {loc.StreetName}", loc.Position);
+            _obstaclesRoot!.AddChild(Home);
         }
     }
 

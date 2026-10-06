@@ -29,6 +29,10 @@ public sealed class GameSaveData
     /// <summary>Local date ("2026-10-06") the refresh counter belongs to.</summary>
     public string RefreshDay { get; set; } = "";
     public int RefreshesUsed { get; set; }
+    /// <summary>Current home; empty (older saves) = the starter home.</summary>
+    public string HousingId { get; set; } = "";
+    /// <summary>Last month ("2026-10") rent/utilities were charged; empty (older saves) = this month.</summary>
+    public string LastBilledMonth { get; set; } = "";
     /// <summary>City and layout seed the player position belongs to.</summary>
     public string RegionId { get; set; } = "";
     public int LayoutSeed { get; set; }
@@ -51,6 +55,7 @@ public sealed class StatsSaveData
     public int TotalFines { get; set; }
     public int TotalFuelSpent { get; set; }
     public int TotalRestSpent { get; set; }
+    public int TotalHousingSpent { get; set; }
     public float TotalDistance { get; set; }
     public double PlayTime { get; set; }
 }

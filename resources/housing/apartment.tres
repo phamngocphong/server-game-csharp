@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HousingData" format=3]
+
+[ext_resource type="Script" path="res://scripts/housing/HousingData.cs" id="1_housing"]
+
+[resource]
+script = ExtResource("1_housing")
+HousingId = "apartment"
+DisplayName = "Apartment"
+Description = "A flat of your own in a tower block. Pay once, then just utilities."
+AccentColor = Color(0.85, 0.85, 0.9, 1)
+Tenure = 1
+Tier = 2
+BuyPrice = 6000
+MonthlyCost = 80
+RestSeconds = 4.0

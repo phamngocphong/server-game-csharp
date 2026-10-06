@@ -53,6 +53,14 @@ public partial class GameManager : Node
 	/// <summary>Date ("yyyy-MM-dd") to use instead of today's, for testing the daily reset; empty = real date.</summary>
 	public string TodayOverride { get; set; } = "";
 
+	/// <summary>All homes (loaded in _Ready).</summary>
+	public HousingCatalog Housings { get; private set; } = null!;
+	/// <summary>Where the player lives: monthly cost and how fast resting at home is.</summary>
+	public HousingData Housing { get; private set; } = null!;
+
+	private const double BillCheckInterval = 5.0;
+	private string _lastBilledMonth = "";
+	private double _billTimer;
 	private string _refreshDay = "";
 	private int _refreshesUsed;
 	private string _shopRotation = "";
@@ -93,6 +101,8 @@ public partial class GameManager : Node
 		Vehicle = Catalog.CreateStarter();
 		Phones = GD.Load<PhoneCatalog>(PhoneCatalog.DefaultPath);
 		Phone = Phones.Starter();
+		Housings = GD.Load<HousingCatalog>(HousingCatalog.DefaultPath);
+		Housing = Housings.Starter();
 	}
 
 	public override void _Process(double delta)
@@ -101,6 +111,12 @@ public partial class GameManager : Node
 		if (Player == null || GetTree().Paused)
 			return;
 		Stats.PlayTime += delta;
+		_billTimer += delta;
+		if (_billTimer >= BillCheckInterval)
+		{
+			_billTimer = 0.0;
+			ChargeMonthlyHousing();
+		}
 		_autosaveTimer += delta;
 		if (_autosaveTimer >= AutosaveInterval)
 		{
@@ -148,6 +164,8 @@ public partial class GameManager : Node
 		Reputation.LoadSaveData(new ReputationSaveData());
 		Vehicle = Catalog.CreateStarter();
 		Phone = Phones.Starter();
+		Housing = Housings.Starter();
+		_lastBilledMonth = CurrentMonth; // the month you move in is free
 		_shopRotation = "";
 		_soldOffers.Clear();
 		_refreshDay = "";
@@ -300,6 +318,66 @@ public partial class GameManager : Node
 		_refreshDay = Today;
 		_refreshesUsed = 0;
 		EventBus.Instance.EmitSignal(EventBus.SignalName.RefreshesChanged);
+	}
+
+	// --- Housing ---------------------------------------------------------------
+
+	/// <summary>"2026-10", from <see cref="Today"/>.</summary>
+	public string CurrentMonth => Today[..7];
+
+	/// <summary>
+	/// Charges rent (rented home) or utilities (owned home) once per calendar month, the first
+	/// time the game runs in that month. Months you did not play are not charged. The wallet may go negative.
+	/// </summary>
+	public void ChargeMonthlyHousing()
+	{
+		if (_lastBilledMonth == CurrentMonth)
+			return;
+		_lastBilledMonth = CurrentMonth;
+		var cost = Housing.MonthlyCost;
+		var kind = Housing.IsOwned ? "Utilities" : "Rent";
+		Wallet.Add(-cost, $"{kind} ({Housing.DisplayName}) for {CurrentMonth}");
+		Stats.RecordHousing(cost);
+		EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested,
+			$"New month: {kind.ToLowerInvariant()} for your {Housing.DisplayName} -{FormatMoney(cost)}");
+		SaveManager.Instance.SaveGame(silent: true);
+	}
+
+	/// <summary>Free rest at home; the better the home, the shorter (<see cref="HousingData.RestSeconds"/>).</summary>
+	public void RestAtHome()
+	{
+		if (Player == null || Player.IsResting)
+			return;
+		if (Player.Fatigue < 5f)
+		{
+			EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested, "You are not tired yet");
+			return;
+		}
+		Player.StartRest(Housing.RestSeconds);
+		EventBus.Instance.EmitSignal(EventBus.SignalName.NotificationRequested,
+			$"Resting at home ({Housing.DisplayName}) - free");
+	}
+
+	/// <summary>
+	/// Moves to a better home: a rented one costs its first month now, an owned one its price
+	/// (then only utilities). Returns an error message, or null on success.
+	/// </summary>
+	public string? BuyHousing(HousingData home)
+	{
+		if (home == Housing)
+			return "You already live here.";
+		if (home.Tier <= Housing.Tier)
+			return "Your home is already better.";
+		var cost = home.IsOwned ? home.BuyPrice : home.MonthlyCost;
+		if (cost > Wallet.Balance)
+			return "Not enough money.";
+		Wallet.Add(-cost, home.IsOwned ? $"Bought home: {home.DisplayName}" : $"Rent ({home.DisplayName}) for {CurrentMonth}");
+		Stats.RecordHousing(cost);
+		Housing = home;
+		_lastBilledMonth = CurrentMonth; // this month is paid (first rent) or covered (just bought)
+		EventBus.Instance.EmitSignal(EventBus.SignalName.HousingChanged);
+		SaveManager.Instance.SaveGame(silent: true);
+		return null;
 	}
 
 	/// <summary>Buys a better phone (no trade-in). Returns an error message, or null on success.</summary>
@@ -460,6 +538,8 @@ public partial class GameManager : Node
 		Vehicle = Vehicle.ToSaveData(),
 		Shop = new ShopSaveData { Rotation = _shopRotation, SoldOffers = _soldOffers.ToList() },
 		PhoneId = Phone.PhoneId,
+		HousingId = Housing.HousingId,
+		LastBilledMonth = _lastBilledMonth,
 		RefreshDay = _refreshDay,
 		RefreshesUsed = _refreshesUsed,
 		RegionId = CityMap?.Region.RegionId ?? "",
@@ -474,6 +554,9 @@ public partial class GameManager : Node
 		Reputation.LoadSaveData(data.Reputation);
 		Vehicle = data.Vehicle != null ? OwnedVehicle.FromSaveData(data.Vehicle) : Catalog.CreateStarter();
 		Phone = Phones.Find(data.PhoneId) ?? Phones.Starter();
+		Housing = Housings.Find(data.HousingId) ?? Housings.Starter();
+		_lastBilledMonth = data.LastBilledMonth.Length > 0 ? data.LastBilledMonth : CurrentMonth;
+		EventBus.Instance.EmitSignal(EventBus.SignalName.HousingChanged);
 		_refreshDay = data.RefreshDay;
 		_refreshesUsed = data.RefreshesUsed;
 		EventBus.Instance.EmitSignal(EventBus.SignalName.PhoneChanged);

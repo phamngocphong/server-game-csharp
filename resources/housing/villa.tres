@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HousingData" format=3]
+
+[ext_resource type="Script" path="res://scripts/housing/HousingData.cs" id="1_housing"]
+
+[resource]
+script = ExtResource("1_housing")
+HousingId = "villa"
+DisplayName = "Villa"
+Description = "A garden villa: the best rest in town."
+AccentColor = Color(0.95, 0.8, 0.35, 1)
+Tenure = 1
+Tier = 3
+BuyPrice = 18000
+MonthlyCost = 150
+RestSeconds = 2.0

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="HousingData" format=3]
+
+[ext_resource type="Script" path="res://scripts/housing/HousingData.cs" id="1_housing"]
+
+[resource]
+script = ExtResource("1_housing")
+HousingId = "shared_room"
+DisplayName = "Shared Room"
+Description = "A bunk in a crowded boarding house. Noisy, but it is a roof."
+AccentColor = Color(0.7, 0.6, 0.45, 1)
+Tenure = 0
+Tier = 0
+BuyPrice = 0
+MonthlyCost = 120
+RestSeconds = 12.0
