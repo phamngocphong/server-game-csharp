@@ -56,6 +56,8 @@ public partial class EventBus : Node
 	// --- UI -------------------------------------------------------------------
 	[Signal] public delegate void JobBoardOpenRequestedEventHandler();
 	[Signal] public delegate void JobBoardOpenedEventHandler();
+	/// <summary>The on-screen pause button was pressed (Esc / P go straight to the pause menu).</summary>
+	[Signal] public delegate void PauseMenuRequestedEventHandler();
 	[Signal] public delegate void DeliveryPopupClosedEventHandler();
 	[Signal] public delegate void PlayerControlsLockedEventHandler(bool locked);
 	[Signal] public delegate void NotificationRequestedEventHandler(string text);
@@ -63,6 +65,8 @@ public partial class EventBus : Node
 	// --- Persistence ----------------------------------------------------------
 	[Signal] public delegate void GameSavedEventHandler();
 	[Signal] public delegate void GameLoadedEventHandler();
+	/// <summary>GameSettings changed (SaveManager.SaveSettings).</summary>
+	[Signal] public delegate void SettingsChangedEventHandler();
 
 	public override void _EnterTree() => Instance = this;
 }

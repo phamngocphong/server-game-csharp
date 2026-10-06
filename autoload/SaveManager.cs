@@ -14,6 +14,9 @@ public partial class SaveManager : Node
 
     /// <summary>File used by save/load. Change it for save slots or to keep tests away from the real save.</summary>
     public string SavePath { get; set; } = DefaultSavePath;
+    /// <summary>Preferences file (touch controls...); separate from the save so New Game keeps it.</summary>
+    public string SettingsPath { get; set; } = "user://settings.cfg";
+    public GameSettings Settings { get; private set; } = new();
     public const int SaveVersion = 5;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -27,6 +30,32 @@ public partial class SaveManager : Node
     public static SaveManager Instance { get; private set; } = null!;
 
     public override void _EnterTree() => Instance = this;
+
+    public override void _Ready() => LoadSettings();
+
+    public void LoadSettings()
+    {
+        Settings = new GameSettings();
+        var config = new ConfigFile();
+        if (config.Load(SettingsPath) != Error.Ok)
+            return;
+        if (System.Enum.TryParse<GameSettings.TouchMode>((string)config.GetValue("controls", "touch", "Auto"), out var touch))
+            Settings.TouchControls = touch;
+        if (System.Enum.TryParse<GameSettings.JoystickMode>((string)config.GetValue("controls", "joystick", "Direction"), out var joystick))
+            Settings.Joystick = joystick;
+    }
+
+    /// <summary>Writes the settings and tells listeners (touch controls...) to re-apply them.</summary>
+    public void SaveSettings()
+    {
+        var config = new ConfigFile();
+        config.SetValue("controls", "touch", Settings.TouchControls.ToString());
+        config.SetValue("controls", "joystick", Settings.Joystick.ToString());
+        var error = config.Save(SettingsPath);
+        if (error != Error.Ok)
+            GD.PushError($"SaveManager: cannot write {SettingsPath} ({error})");
+        EventBus.Instance.EmitSignal(EventBus.SignalName.SettingsChanged);
+    }
 
     public bool HasSave() => FileAccess.FileExists(SavePath);
 

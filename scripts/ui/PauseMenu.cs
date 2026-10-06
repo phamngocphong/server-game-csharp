@@ -4,9 +4,10 @@ using Godot;
 namespace ShipperSimulator;
 
 /// <summary>
-/// In-game pause menu (Esc / P). Pauses the whole scene tree; this node keeps running
-/// (ProcessMode.Always) to handle its buttons: resume, save, save + main menu, save + quit.
-/// Warns that a job in progress is not saved.
+/// In-game pause menu (Esc / P, or the HUD pause button). Pauses the whole scene tree; this node keeps running
+/// (ProcessMode.Always) to handle its buttons: resume, save, save + main menu, save + quit,
+/// plus the touch-control options (Auto/On/Off, joystick mode). Warns that a job in
+/// progress is not saved.
 /// </summary>
 public partial class PauseMenu : Control
 {
@@ -16,6 +17,8 @@ public partial class PauseMenu : Control
     private Label _statusLabel = null!;
     private Label _warningLabel = null!;
     private Button _resumeButton = null!;
+    private Button _touchButton = null!;
+    private Button _joystickButton = null!;
     private bool _hasActiveJob;
 
     public override void _Ready()
@@ -29,7 +32,12 @@ public partial class PauseMenu : Control
         GetNode<Button>("%SaveButton").Pressed += OnSavePressed;
         GetNode<Button>("%MainMenuButton").Pressed += OnMainMenuPressed;
         GetNode<Button>("%QuitButton").Pressed += OnQuitPressed;
+        _touchButton = GetNode<Button>("%TouchButton");
+        _joystickButton = GetNode<Button>("%JoystickButton");
+        _touchButton.Pressed += OnTouchPressed;
+        _joystickButton.Pressed += OnJoystickPressed;
         EventBus.Instance.JobStateChanged += OnJobStateChanged;
+        EventBus.Instance.PauseMenuRequested += Open;
         Hide();
     }
 
@@ -38,6 +46,7 @@ public partial class PauseMenu : Control
         // C# events of [Signal]s declared in C# are plain delegates: Godot does not
         // disconnect them when this node is freed, so unsubscribe explicitly.
         EventBus.Instance.JobStateChanged -= OnJobStateChanged;
+        EventBus.Instance.PauseMenuRequested -= Open;
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -53,10 +62,13 @@ public partial class PauseMenu : Control
 
     public void Open()
     {
+        if (Visible)
+            return;
         GetTree().Paused = true;
         _statusLabel.Text = "";
         _warningLabel.Visible = _hasActiveJob;
         RefreshSummary();
+        RefreshOptions();
         Show();
         _resumeButton.GrabFocus();
     }
@@ -79,6 +91,40 @@ public partial class PauseMenu : Control
             $"{city}  -  {weather}\n" +
             $"Balance {GameManager.FormatMoney(gm.Wallet.Balance)}   Deliveries {gm.Stats.TotalDeliveries}\n" +
             $"Rating {GameManager.FormatRating(gm.Reputation.Rating)} / 5   Fuel {fuel}   Played {GameManager.FormatTime(gm.Stats.PlayTime)}";
+    }
+
+    private void RefreshOptions()
+    {
+        var settings = SaveManager.Instance.Settings;
+        var state = settings.TouchControlsActive ? "shown" : "hidden";
+        _touchButton.Text = $"Touch controls: {settings.TouchControls} ({state})";
+        _joystickButton.Text = settings.Joystick == GameSettings.JoystickMode.Direction
+            ? "Joystick: Direction (point where to go)"
+            : "Joystick: Steer (up = gas, sides = steer)";
+        _joystickButton.Disabled = !settings.TouchControlsActive;
+    }
+
+    private void OnTouchPressed()
+    {
+        var settings = SaveManager.Instance.Settings;
+        settings.TouchControls = settings.TouchControls switch
+        {
+            GameSettings.TouchMode.Auto => GameSettings.TouchMode.On,
+            GameSettings.TouchMode.On => GameSettings.TouchMode.Off,
+            _ => GameSettings.TouchMode.Auto,
+        };
+        SaveManager.Instance.SaveSettings();
+        RefreshOptions();
+    }
+
+    private void OnJoystickPressed()
+    {
+        var settings = SaveManager.Instance.Settings;
+        settings.Joystick = settings.Joystick == GameSettings.JoystickMode.Direction
+            ? GameSettings.JoystickMode.Steer
+            : GameSettings.JoystickMode.Direction;
+        SaveManager.Instance.SaveSettings();
+        RefreshOptions();
     }
 
     private void OnSavePressed()

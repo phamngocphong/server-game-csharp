@@ -28,7 +28,21 @@ It was tested with Godot 4.7.2 .NET and uses no APIs added after 4.4.
 | E | Pick up or deliver when inside a marker; also closes the result popup |
 | Tab / J | Open or close the Job Board |
 | F5 | Quick save |
-| Esc / P | Pause menu |
+| Esc / P, or the **II** button at the top left | Pause menu |
+
+### Touch controls (mobile)
+
+On a **mobile build** (Android/iOS) or a device with a touchscreen, on-screen controls appear:
+
+- **Joystick (left half of the screen):** it is floating, so it appears wherever you put your thumb. There are two modes, which you switch in the pause menu:
+  - **Direction** (default): point the stick where you want to go. The bike steers towards that direction and accelerates according to how far you push.
+  - **Steer:** up = throttle, down = brake/reverse, left/right = steer, like the keyboard.
+- **BRAKE:** hold to brake.
+- **E:** interact. It glows when there is something to pick up, deliver or refuel.
+- **JOBS:** opens and closes the Job Board.
+- **Pause:** use the HUD's **II** button at the top left, next to the wallet. It is shown on PC as well.
+
+The pause menu option **Touch controls** cycles through **Auto** (shown on mobile and touchscreens), **On** (always shown; on a PC the left mouse button acts as a finger, for testing) and **Off**. The choice is saved in `user://settings.cfg`, separately from the game save, so New Game does not reset it.
 
 ### Saving, Continue and New Game
 
@@ -46,7 +60,7 @@ The save file is `user://savegame.json`. It holds your wallet, statistics, drive
 
 ### Pause menu
 
-Press **Esc** or **P** while driving. The whole game freezes: your bike, traffic, traffic lights, weather, job timers, fuel use and play time all stop. The menu shows a short summary (city, weather, money, deliveries, rating, fuel and play time) and these buttons:
+Press **Esc** or **P**, or click/tap the **II** button at the top left of the HUD. The whole game freezes: your bike, traffic, traffic lights, weather, job timers, fuel use and play time all stop. The menu shows a short summary (city, weather, money, deliveries, rating, fuel and play time) and these buttons:
 
 | Button | Action |
 |---|---|
@@ -159,8 +173,8 @@ scripts/
   economy/     Wallet (+ WalletEntry), PlayerStats, Reputation (driver rating)
   traffic/     TrafficManager (spawner), TrafficVehicle (AI road user), TrafficVehicleData, TrafficLights (signals + fines)
   weather/     WeatherSystem (picks and fades weather), WeatherData, RainOverlay
-  save/        SaveData.cs: JSON save DTOs
-  ui/          MainMenu, PauseMenu, Hud, JobBoard, JobEntry, DeliveryResultPopup, StarRating (draws 0-5 stars)
+  save/        SaveData.cs: JSON save DTOs; GameSettings.cs: preferences (touch controls)
+  ui/          MainMenu, PauseMenu, TouchControls, Hud, JobBoard, JobEntry, DeliveryResultPopup, StarRating (draws 0-5 stars)
 resources/
   jobs/        JobTemplate .tres files (one per job type): parcel, documents, fragile_electronics, food_delivery, passenger_ride
   vehicles/    VehicleStats .tres files
@@ -176,7 +190,14 @@ All C# code is in the `ShipperSimulator` namespace. Godot requires each script f
 - **EventBus** (`EventBus.Instance`) is the only connection between systems. It declares Godot `[Signal]`s. Listeners subscribe with C# event syntax, for example `EventBus.Instance.JobAccepted += OnJobAccepted;`. Senders call `EmitSignal(EventBus.SignalName.X, ...)`. UI scripts emit requests such as `JobAcceptRequested`, and `JobManager` emits results such as `JobStateChanged`, `JobDelivered`, `JobFailed`, `JobTimerUpdated` (every frame of a timed job), `JobBoardNoticeChanged` and `NavigationTargetChanged`. `GameManager` emits `BalanceChanged`, `StatsChanged` and `ReputationChanged`. Nothing in the UI holds a reference to `JobManager`.
   - Subscribe with **methods, not lambdas**, and **unsubscribe in `_ExitTree()`** with the same method (`-=`). The `EventBus` signals are declared in C#, so their C# events are plain delegates and Godot does **not** disconnect them when a node is freed. A handler you forget to remove keeps running after a scene change and throws `ObjectDisposedException`. Built-in Godot signals such as `Button.Pressed` are disconnected automatically.
 - **Scene lifecycle:** `Main._ExitTree()` calls `GameManager.UnregisterWorld()`, so autosave and play-time tracking stop when you leave the gameplay scene.
-- **Pausing:** `PauseMenu` (under the `UI` CanvasLayer) sets `SceneTree.Paused`. It is the only gameplay node with `ProcessMode.Always`, so it keeps handling input while everything else stops. `GameManager` also always processes, so that F5 works while paused, but it skips play time and autosave when the tree is paused. Before changing scene, the pause menu unpauses the tree.
+- **Touch controls** (`TouchControls`, a full-screen Control under `UI`):
+  - **Input:** it handles `InputEventScreenTouch` and `InputEventScreenDrag` in `_Input` and tracks each finger by its touch index, so the joystick and BRAKE work at the same time. Mouse events that Godot emulates from touches are ignored.
+  - **Output:** it does not move the bike itself. It presses the normal actions: `move_*` with analog strength through `Input.ActionPress`, and taps for `interact` and `toggle_job_board` sent as `InputEventAction` events, so `_UnhandledInput` handlers see them. It only releases actions it pressed itself, so it never cancels keyboard input.
+  - **Sharing the screen with the UI:** a touch that starts on a visible control in `BlockingControls` (the Job Board panel, the delivery popup and the active-job panel) is left to the UI, and so is any touch outside its own zones (such as the HUD pause button). JOBS always works.
+  - **Pausing:** when the tree pauses or the app loses focus, every touch action is released.
+  - **Settings:** they come from `SaveManager.Settings` (`GameSettings`), which `SaveManager.LoadSettings()` / `SaveSettings()` read and write. A save triggers `EventBus.SettingsChanged`.
+  - **Mobile export:** `export_presets.cfg` only has a Windows preset. Add an Android or iOS preset in the editor (Project → Export). Godot .NET supports Android, and iOS is experimental. Include `data/cities/*.json` in its `include_filter`, like the Windows preset.
+- **Pausing:** the HUD pause button (`focus_mode = None`, so Space and Enter never press it while driving) emits `EventBus.PauseMenuRequested`, which `PauseMenu.Open()` listens to. `PauseMenu` (under the `UI` CanvasLayer) sets `SceneTree.Paused`. It is the only gameplay node with `ProcessMode.Always`, so it keeps handling input while everything else stops. `GameManager` also always processes, so that F5 works while paused, but it skips play time and autosave when the tree is paused. Before changing scene, the pause menu unpauses the tree.
 - **GameManager** (`GameManager.Instance`) owns the global state (`Wallet`, `PlayerStats`, `Reputation`, world references) and holds the helpers for payouts and formatting (`FormatMoney`, `FormatDistance`...). It also builds the data that goes into the save file.
 - **SaveManager** writes and reads versioned JSON (currently version 3) through `System.Text.Json`, using the DTOs in `scripts/save/SaveData.cs` with snake_case keys. Add migrations in `Migrate()`. The file is `SaveManager.SavePath`, which defaults to `user://savegame.json`. You can change it for save slots or for tests that must not touch the real save.
 - **Data resources** (`JobTemplate`, `VehicleStats`) are `[GlobalClass]` resources, so you can create and edit them in the inspector. In `.tres` files their properties use the C# names (PascalCase). `CityRegionData` and `DistrictData` are created at runtime by `CityLoader` from the city JSON files.

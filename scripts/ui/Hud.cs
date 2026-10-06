@@ -76,6 +76,7 @@ public partial class Hud : Control
         bus.TrafficFined += OnTrafficFined;
         bus.WeatherChanged += OnWeatherChanged;
         _cancelButton.Pressed += OnCancelPressed;
+        GetNode<Button>("%PauseButton").Pressed += OnPausePressed;
 
         _activeJobPanel.Hide();
         _promptPanel.Hide();
@@ -256,6 +257,8 @@ public partial class Hud : Control
         _promptLabel.Text = text;
         _promptPanel.Visible = !string.IsNullOrEmpty(text);
     }
+
+    private void OnPausePressed() => EventBus.Instance.EmitSignal(EventBus.SignalName.PauseMenuRequested);
 
     private void OnCancelPressed() => EventBus.Instance.EmitSignal(EventBus.SignalName.JobCancelRequested);
 }

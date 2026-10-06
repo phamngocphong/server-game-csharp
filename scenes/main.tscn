@@ -14,6 +14,7 @@
 [ext_resource type="PackedScene" path="res://ui/job_board.tscn" id="12_board"]
 [ext_resource type="PackedScene" path="res://ui/delivery_result_popup.tscn" id="13_popup"]
 [ext_resource type="PackedScene" path="res://ui/pause_menu.tscn" id="28_pause"]
+[ext_resource type="Script" path="res://scripts/ui/TouchControls.cs" id="29_touch"]
 [ext_resource type="Resource" path="res://resources/jobs/passenger_ride.tres" id="14_passenger"]
 [ext_resource type="Script" path="res://scripts/traffic/TrafficManager.cs" id="15_traffic"]
 [ext_resource type="Script" path="res://scripts/traffic/TrafficVehicleData.cs" id="16_vehicle_data"]
@@ -68,5 +69,17 @@ layer = 10
 [node name="JobBoard" parent="UI" instance=ExtResource("12_board")]
 
 [node name="DeliveryResultPopup" parent="UI" instance=ExtResource("13_popup")]
+
+[node name="TouchControls" type="Control" parent="UI"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("29_touch")
+BlockingControls = [NodePath("../JobBoard/Panel"), NodePath("../DeliveryResultPopup"), NodePath("../HUD/ActiveJobPanel")]
+KeyboardHint = NodePath("../HUD/SpeedPanel/VBox/ControlsLabel")
 
 [node name="PauseMenu" parent="UI" instance=ExtResource("28_pause")]

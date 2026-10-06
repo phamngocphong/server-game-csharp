@@ -90,6 +90,18 @@ theme_override_font_sizes/font_size = 13
 text = "Weather"
 autowrap_mode = 3
 
+[node name="PauseButton" type="Button" parent="."]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 312.0
+offset_top = 16.0
+offset_right = 368.0
+offset_bottom = 72.0
+focus_mode = 0
+tooltip_text = "Pause (Esc / P)"
+theme_override_font_sizes/font_size = 24
+text = "II"
+
 [node name="ActiveJobPanel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
 layout_mode = 1
