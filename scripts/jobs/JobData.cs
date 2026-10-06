@@ -13,6 +13,8 @@ public partial class JobData : Resource
     [Export] public string TemplateId { get; set; } = "";
     [Export] public string PackageName { get; set; } = "";
     [Export] public Color PackageColor { get; set; } = Colors.White;
+    [Export] public JobTemplate.CargoKind Cargo { get; set; }
+    [Export] public string CustomerName { get; set; } = "";
 
     [Export] public string PickupName { get; set; } = "";
     [Export] public string PickupDistrict { get; set; } = "";
@@ -27,4 +29,16 @@ public partial class JobData : Resource
     [Export] public float Distance { get; set; }
     /// <summary>Estimated route distance player -> pickup when the job was generated.</summary>
     [Export] public float DistanceToPickup { get; set; }
+
+    /// <summary>Seconds to reach the pickup; 0 = no limit. Recalculated when the job is accepted.</summary>
+    [Export] public float PickupTimeLimit { get; set; }
+    /// <summary>Seconds from pickup to drop-off; 0 = no limit.</summary>
+    [Export] public float DeliveryTimeLimit { get; set; }
+    /// <summary>Share of the reward lost on a late drop-off (1 = the job fails).</summary>
+    [Export] public float LatePenalty { get; set; }
+
+    public bool IsTimed => DeliveryTimeLimit > 0f;
+    public bool IsPassenger => Cargo == JobTemplate.CargoKind.Passenger;
+    /// <summary>Package name plus customer, e.g. "Passenger Ride - Ms. Lan".</summary>
+    public string Title => CustomerName.Length > 0 ? $"{PackageName} - {CustomerName}" : PackageName;
 }

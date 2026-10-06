@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" path="res://ui/hud.tscn" id="11_hud"]
 [ext_resource type="PackedScene" path="res://ui/job_board.tscn" id="12_board"]
 [ext_resource type="PackedScene" path="res://ui/delivery_result_popup.tscn" id="13_popup"]
+[ext_resource type="Resource" path="res://resources/jobs/passenger_ride.tres" id="14_passenger"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
@@ -28,7 +29,7 @@ script = ExtResource("4_jobs")
 Map = NodePath("../CityMap")
 MarkersRoot = NodePath("../Markers")
 MarkerScene = ExtResource("5_marker")
-JobTemplates = Array[ExtResource("6_template")]([ExtResource("7_food"), ExtResource("8_docs"), ExtResource("9_parcel"), ExtResource("10_electronics")])
+JobTemplates = Array[ExtResource("6_template")]([ExtResource("7_food"), ExtResource("8_docs"), ExtResource("9_parcel"), ExtResource("10_electronics"), ExtResource("14_passenger")])
 
 [node name="UI" type="CanvasLayer" parent="."]
 

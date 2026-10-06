@@ -26,6 +26,10 @@ public partial class EventBus : Node
 	[Signal] public delegate void JobPickedUpEventHandler(JobData job);
 	[Signal] public delegate void JobDeliveredEventHandler(DeliveryResult result);
 	[Signal] public delegate void JobCancelledEventHandler(JobData job);
+	/// <summary>A timed job ran out of time; <paramref name="reason"/> is shown to the player.</summary>
+	[Signal] public delegate void JobFailedEventHandler(JobData job, string reason);
+	/// <summary>Every frame of a timed job. <paramref name="remaining"/> goes negative when late.</summary>
+	[Signal] public delegate void JobTimerUpdatedEventHandler(float remaining, float limit);
 	/// <summary><paramref name="state"/> is a <see cref="JobManager.State"/>; job is null when idle.</summary>
 	[Signal] public delegate void JobStateChangedEventHandler(int state, JobData job);
 

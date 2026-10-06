@@ -3,8 +3,8 @@ using Godot;
 namespace ShipperSimulator;
 
 /// <summary>
-/// Always-on HUD: wallet, current city and district, active job, interaction prompt,
-/// speedometer and toast notifications.
+/// Always-on HUD: wallet, current city and district, active job (with its countdown
+/// for timed jobs), interaction prompt, speedometer and toast notifications.
 /// </summary>
 public partial class Hud : Control
 {
@@ -14,6 +14,7 @@ public partial class Hud : Control
     private Label _districtLabel = null!;
     private Control _activeJobPanel = null!;
     private Label _jobStatusLabel = null!;
+    private Label _jobTimerLabel = null!;
     private Label _jobTargetLabel = null!;
     private Label _jobInfoLabel = null!;
     private Label _jobDistanceLabel = null!;
@@ -36,6 +37,7 @@ public partial class Hud : Control
         _districtLabel = GetNode<Label>("%DistrictLabel");
         _activeJobPanel = GetNode<Control>("%ActiveJobPanel");
         _jobStatusLabel = GetNode<Label>("%JobStatusLabel");
+        _jobTimerLabel = GetNode<Label>("%JobTimerLabel");
         _jobTargetLabel = GetNode<Label>("%JobTargetLabel");
         _jobInfoLabel = GetNode<Label>("%JobInfoLabel");
         _jobDistanceLabel = GetNode<Label>("%JobDistanceLabel");
@@ -50,6 +52,7 @@ public partial class Hud : Control
         bus.BalanceChanged += OnBalanceChanged;
         bus.StatsChanged += RefreshStats;
         bus.JobStateChanged += OnJobStateChanged;
+        bus.JobTimerUpdated += OnJobTimerUpdated;
         bus.NavigationTargetChanged += OnTargetChanged;
         bus.NavigationTargetCleared += OnTargetCleared;
         bus.InteractionPromptChanged += OnPromptChanged;
@@ -71,6 +74,7 @@ public partial class Hud : Control
         bus.BalanceChanged -= OnBalanceChanged;
         bus.StatsChanged -= RefreshStats;
         bus.JobStateChanged -= OnJobStateChanged;
+        bus.JobTimerUpdated -= OnJobTimerUpdated;
         bus.NavigationTargetChanged -= OnTargetChanged;
         bus.NavigationTargetCleared -= OnTargetCleared;
         bus.InteractionPromptChanged -= OnPromptChanged;
@@ -122,11 +126,11 @@ public partial class Hud : Control
         switch ((JobManager.State)state)
         {
             case JobManager.State.ToPickup:
-                _jobStatusLabel.Text = "GO TO PICKUP";
+                _jobStatusLabel.Text = job.IsPassenger ? "PICK UP PASSENGER" : "GO TO PICKUP";
                 _jobTargetLabel.Text = $"{job.PickupName} ({job.PickupDistrict})";
                 break;
             case JobManager.State.ToDelivery:
-                _jobStatusLabel.Text = "DELIVER TO";
+                _jobStatusLabel.Text = job.IsPassenger ? "DROP OFF PASSENGER" : "DELIVER TO";
                 _jobTargetLabel.Text = $"{job.DeliveryName} ({job.DeliveryDistrict})";
                 break;
             default:
@@ -134,8 +138,29 @@ public partial class Hud : Control
                 return;
         }
         _activeJobPanel.Show();
-        _jobInfoLabel.Text = $"{job.PackageName}  -  Reward {GameManager.FormatMoney(job.Reward)}";
+        var rewardWord = job.IsPassenger ? "Fare" : "Reward";
+        _jobInfoLabel.Text = $"{job.Title}  -  {rewardWord} {GameManager.FormatMoney(job.Reward)}";
         _jobStatusLabel.AddThemeColorOverride("font_color", job.PackageColor);
+        _jobTimerLabel.Visible = job.IsTimed;
+    }
+
+    private void OnJobTimerUpdated(float remaining, float limit)
+    {
+        if (remaining > 0f)
+        {
+            // Round up so the label shows 0:01 until the deadline actually passes.
+            _jobTimerLabel.Text = $"Time left {GameManager.FormatTime(Mathf.Ceil(remaining))}";
+            var share = limit > 0f ? remaining / limit : 1f;
+            _jobTimerLabel.Modulate = share > 0.5f ? new Color(0.6f, 1f, 0.65f)
+                : share > 0.25f ? new Color(1f, 0.75f, 0.3f)
+                : new Color(1f, 0.35f, 0.3f);
+        }
+        else
+        {
+            _jobTimerLabel.Text = $"LATE +{GameManager.FormatTime(Mathf.Ceil(-remaining))}";
+            // Blink while late.
+            _jobTimerLabel.Modulate = new Color(1f, 0.3f, 0.3f, 0.6f + 0.4f * Mathf.Sin((float)Time.GetTicksMsec() / 120f));
+        }
     }
 
     private void OnTargetChanged(Vector2 target, string label, Color color)

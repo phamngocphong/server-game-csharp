@@ -90,16 +90,22 @@ public partial class GameManager : Node
 	/// </summary>
 	public float GetRewardMultiplier(JobTemplate template) => 1f;
 
-	/// <summary>Pays out a finished job and records statistics.</summary>
-	public DeliveryResult CompleteDelivery(JobData job, double elapsedTime)
+	/// <summary>Pays out a finished job (minus the late penalty) and records statistics.</summary>
+	public DeliveryResult CompleteDelivery(JobData job, double elapsedTime, double deliveryTime, bool late)
 	{
-		Wallet.Add(job.Reward, $"{job.PackageName}: {job.PickupName} -> {job.DeliveryName}");
-		Stats.RecordDelivery(job.Reward, job.Distance);
+		var penalty = late ? Mathf.RoundToInt(job.Reward * job.LatePenalty) : 0;
+		var reward = Mathf.Max(1, job.Reward - penalty);
+		var lateTag = late ? " (late)" : "";
+		Wallet.Add(reward, $"{job.Title}{lateTag}: {job.PickupName} -> {job.DeliveryName}");
+		Stats.RecordDelivery(reward, job.Distance);
 
 		var result = new DeliveryResult
 		{
 			Job = job,
-			Reward = job.Reward,
+			Reward = reward,
+			WasLate = late,
+			LatePenaltyAmount = job.Reward - reward,
+			DeliveryTime = deliveryTime,
 			ElapsedTime = elapsedTime,
 			NewBalance = Wallet.Balance,
 			TotalDeliveries = Stats.TotalDeliveries,

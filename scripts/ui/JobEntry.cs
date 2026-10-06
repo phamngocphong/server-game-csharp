@@ -12,6 +12,7 @@ public partial class JobEntry : PanelContainer
     private Label _packageLabel = null!;
     private Label _routeLabel = null!;
     private Label _detailLabel = null!;
+    private Label _timeLabel = null!;
     private Label _rewardLabel = null!;
     private Button _acceptButton = null!;
 
@@ -20,6 +21,7 @@ public partial class JobEntry : PanelContainer
         _packageLabel = GetNode<Label>("%PackageLabel");
         _routeLabel = GetNode<Label>("%RouteLabel");
         _detailLabel = GetNode<Label>("%DetailLabel");
+        _timeLabel = GetNode<Label>("%TimeLabel");
         _rewardLabel = GetNode<Label>("%RewardLabel");
         _acceptButton = GetNode<Button>("%AcceptButton");
         _acceptButton.Pressed += OnAcceptButtonPressed;
@@ -37,11 +39,21 @@ public partial class JobEntry : PanelContainer
     private void Apply()
     {
         var job = Job!;
-        _packageLabel.Text = job.PackageName;
+        _packageLabel.Text = job.Title;
         _packageLabel.AddThemeColorOverride("font_color", job.PackageColor);
         _routeLabel.Text = $"From: {job.PickupName} ({job.PickupDistrict})\nTo: {job.DeliveryName} ({job.DeliveryDistrict})";
         _detailLabel.Text = $"Pickup {GameManager.FormatDistance(job.DistanceToPickup)} away  -  Trip {GameManager.FormatDistance(job.Distance)}";
         _rewardLabel.Text = GameManager.FormatMoney(job.Reward);
+
+        _timeLabel.Visible = job.IsTimed;
+        if (job.IsTimed)
+        {
+            var lateRule = job.LatePenalty >= 1f
+                ? "fails if late"
+                : $"late: -{Mathf.RoundToInt(job.LatePenalty * 100f)}%";
+            _timeLabel.Text = $"TIMED  Pickup {GameManager.FormatTime(job.PickupTimeLimit)}  -  " +
+                $"{(job.IsPassenger ? "Ride" : "Delivery")} {GameManager.FormatTime(job.DeliveryTimeLimit)}  ({lateRule})";
+        }
     }
 
     private void OnAcceptButtonPressed()

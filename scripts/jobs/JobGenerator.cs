@@ -52,6 +52,23 @@ public sealed class JobGenerator
         return jobs;
     }
 
+    /// <summary>Re-times the pickup from the player's current position (they may have moved since the board was generated).</summary>
+    public void UpdatePickupTimeLimit(JobData job, Vector2 origin)
+    {
+        var template = _templates.FirstOrDefault(t => t.TemplateId == job.TemplateId);
+        if (template == null || !template.IsTimed)
+            return;
+        job.DistanceToPickup = RouteDistance(origin, job.PickupPosition);
+        job.PickupTimeLimit = TimeLimit(template.PickupBaseTime, template.PickupTimePerKm, job.DistanceToPickup);
+    }
+
+    /// <summary>Base + km * per-km seconds, rounded up to a multiple of 5 s.</summary>
+    public static float TimeLimit(float baseTime, float timePerKm, float distance)
+    {
+        var seconds = baseTime + distance / GameManager.PixelsPerKm * timePerKm;
+        return Mathf.Ceil(seconds / 5f) * 5f;
+    }
+
     public int CalculateReward(JobTemplate template, float distance, DistrictData? district)
     {
         var km = distance / GameManager.PixelsPerKm;
@@ -119,12 +136,17 @@ public sealed class JobGenerator
     private JobData BuildJob(JobTemplate template, DeliveryLocation pickup, DeliveryLocation delivery, Vector2 origin)
     {
         var distance = RouteDistance(pickup.Position, delivery.Position);
+        var distanceToPickup = RouteDistance(origin, pickup.Position);
         return new JobData
         {
             Id = $"JOB-{_nextId++:0000}",
             TemplateId = template.TemplateId,
             PackageName = template.PackageName,
             PackageColor = template.Color,
+            Cargo = template.Cargo,
+            CustomerName = template.CustomerNames.Length > 0
+                ? template.CustomerNames[_rng.RandiRange(0, template.CustomerNames.Length - 1)]
+                : "",
 
             PickupName = pickup.DisplayName,
             PickupDistrict = pickup.DistrictName,
@@ -134,8 +156,14 @@ public sealed class JobGenerator
             DeliveryPosition = delivery.Position,
 
             Distance = distance,
-            DistanceToPickup = RouteDistance(origin, pickup.Position),
+            DistanceToPickup = distanceToPickup,
             Reward = CalculateReward(template, distance, delivery.District),
+
+            PickupTimeLimit = template.IsTimed
+                ? TimeLimit(template.PickupBaseTime, template.PickupTimePerKm, distanceToPickup) : 0f,
+            DeliveryTimeLimit = template.IsTimed
+                ? TimeLimit(template.DeliveryBaseTime, template.DeliveryTimePerKm, distance) : 0f,
+            LatePenalty = template.IsTimed ? template.LatePenalty : 0f,
         };
     }
 

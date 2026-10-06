@@ -17,14 +17,17 @@ public partial class JobMarker : Area2D
 
     public Kind MarkerKind { get; private set; } = Kind.Pickup;
     public string Title { get; private set; } = "";
+    /// <summary>Draws a person instead of a package at the pickup.</summary>
+    public bool IsPassenger { get; private set; }
 
     private float _time;
     private Label _label = null!;
 
-    public void Setup(Kind kind, string title)
+    public void Setup(Kind kind, string title, bool isPassenger = false)
     {
         MarkerKind = kind;
         Title = title;
+        IsPassenger = isPassenger;
     }
 
     public override void _Ready()
@@ -51,7 +54,13 @@ public partial class JobMarker : Area2D
         DrawCircle(Vector2.Zero, Radius, new Color(c, 0.15f + 0.1f * pulse));
         DrawArc(Vector2.Zero, Radius * (0.85f + 0.15f * pulse), 0f, Mathf.Tau, 48, c, 4f, true);
 
-        if (MarkerKind == Kind.Pickup)
+        if (MarkerKind == Kind.Pickup && IsPassenger)
+        {
+            // Waiting person icon: head + shoulders.
+            DrawCircle(new Vector2(0, -9), 7f, c);
+            DrawColoredPolygon(new[] { new Vector2(-13, 14), new Vector2(-9, 1), new Vector2(9, 1), new Vector2(13, 14) }, c);
+        }
+        else if (MarkerKind == Kind.Pickup)
         {
             // Package box icon.
             DrawRect(new Rect2(-14, -14, 28, 28), c);

@@ -2,9 +2,10 @@ using Godot;
 
 namespace ShipperSimulator;
 
-/// <summary>Modal summary shown after a successful delivery.</summary>
+/// <summary>Modal summary shown after a successful delivery or ride.</summary>
 public partial class DeliveryResultPopup : Control
 {
+    private Label _titleLabel = null!;
     private GridContainer _detailsGrid = null!;
     private Label _rewardLabel = null!;
     private Label _balanceLabel = null!;
@@ -12,6 +13,7 @@ public partial class DeliveryResultPopup : Control
 
     public override void _Ready()
     {
+        _titleLabel = GetNode<Label>("%TitleLabel");
         _detailsGrid = GetNode<GridContainer>("%DetailsGrid");
         _rewardLabel = GetNode<Label>("%RewardLabel");
         _balanceLabel = GetNode<Label>("%BalanceLabel");
@@ -44,11 +46,20 @@ public partial class DeliveryResultPopup : Control
             child.QueueFree();
 
         var job = result.Job;
-        AddRow("Package", job.PackageName);
+        _titleLabel.Text = job.IsPassenger ? "Ride Complete!" : "Delivery Complete!";
+        AddRow(job.IsPassenger ? "Ride" : "Package", job.Title);
         AddRow("From", $"{job.PickupName} ({job.PickupDistrict})");
         AddRow("To", $"{job.DeliveryName} ({job.DeliveryDistrict})");
         AddRow("Distance", GameManager.FormatDistance(job.Distance));
         AddRow("Time", GameManager.FormatTime(result.ElapsedTime));
+        if (job.IsTimed)
+        {
+            AddRow(job.IsPassenger ? "Ride time" : "Delivery time",
+                $"{GameManager.FormatTime(result.DeliveryTime)} / {GameManager.FormatTime(job.DeliveryTimeLimit)}");
+            AddRow("Status", result.WasLate
+                ? $"LATE  (-{GameManager.FormatMoney(result.LatePenaltyAmount)})"
+                : "On time", result.WasLate ? new Color(1f, 0.4f, 0.35f) : new Color(0.55f, 1f, 0.6f));
+        }
         AddRow("Total deliveries", result.TotalDeliveries.ToString());
 
         _rewardLabel.Text = $"+{GameManager.FormatMoney(result.Reward)}";
@@ -68,12 +79,13 @@ public partial class DeliveryResultPopup : Control
         EventBus.Instance.EmitSignal(EventBus.SignalName.DeliveryPopupClosed);
     }
 
-    private void AddRow(string key, string value)
+    private void AddRow(string key, string value, Color? valueColor = null)
     {
         _detailsGrid.AddChild(new Label { Text = key, Modulate = new Color(1, 1, 1, 0.65f) });
         _detailsGrid.AddChild(new Label
         {
             Text = value,
+            Modulate = valueColor ?? Colors.White,
             AutowrapMode = TextServer.AutowrapMode.WordSmart,
             SizeFlagsHorizontal = SizeFlags.ExpandFill,
         });

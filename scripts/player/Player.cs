@@ -32,6 +32,7 @@ public partial class Player : CharacterBody2D
         bus.JobPickedUp += OnJobPickedUp;
         bus.JobDelivered += OnJobDelivered;
         bus.JobCancelled += OnJobCancelled;
+        bus.JobFailed += OnJobFailed;
     }
 
     public override void _ExitTree()
@@ -43,6 +44,7 @@ public partial class Player : CharacterBody2D
         bus.JobPickedUp -= OnJobPickedUp;
         bus.JobDelivered -= OnJobDelivered;
         bus.JobCancelled -= OnJobCancelled;
+        bus.JobFailed -= OnJobFailed;
     }
 
     public override void _PhysicsProcess(double delta)
@@ -148,7 +150,19 @@ public partial class Player : CharacterBody2D
     }
 
     private void OnControlsLocked(bool locked) => ControlsEnabled = !locked;
-    private void OnJobPickedUp(JobData job) => _visual.HasPackage = true;
-    private void OnJobDelivered(DeliveryResult result) => _visual.HasPackage = false;
-    private void OnJobCancelled(JobData job) => _visual.HasPackage = false;
+    private void OnJobPickedUp(JobData job)
+    {
+        _visual.HasPassenger = job.IsPassenger;
+        _visual.HasPackage = !job.IsPassenger;
+    }
+
+    private void OnJobDelivered(DeliveryResult result) => ClearCargo();
+    private void OnJobCancelled(JobData job) => ClearCargo();
+    private void OnJobFailed(JobData job, string reason) => ClearCargo();
+
+    private void ClearCargo()
+    {
+        _visual.HasPackage = false;
+        _visual.HasPassenger = false;
+    }
 }

@@ -11,8 +11,11 @@ public partial class BikeVisual : Node2D
     private static readonly Color HelmetColor = new(0.95f, 0.95f, 0.95f);
     private static readonly Color BoxEmptyColor = new(0.45f, 0.3f, 0.15f);
     private static readonly Color BoxFullColor = new(0.95f, 0.75f, 0.3f);
+    private static readonly Color PassengerShirtColor = new(0.3f, 0.6f, 0.95f);
+    private static readonly Color PassengerHelmetColor = new(0.2f, 0.75f, 0.35f);
 
     private bool _hasPackage;
+    private bool _hasPassenger;
     private float _lean;
 
     public bool HasPackage
@@ -21,6 +24,16 @@ public partial class BikeVisual : Node2D
         set
         {
             _hasPackage = value;
+            QueueRedraw();
+        }
+    }
+
+    public bool HasPassenger
+    {
+        get => _hasPassenger;
+        set
+        {
+            _hasPassenger = value;
             QueueRedraw();
         }
     }
@@ -52,6 +65,12 @@ public partial class BikeVisual : Node2D
         var boxColor = HasPackage ? BoxFullColor : BoxEmptyColor;
         DrawRect(new Rect2(-26, -10, 15, 20), boxColor);
         DrawRect(new Rect2(-26, -10, 15, 20), boxColor.Darkened(0.5f), false, 2f);
+        // Passenger sits behind the rider, on the front of the box.
+        if (HasPassenger)
+        {
+            DrawCircle(new Vector2(-14, 0), 7.5f, PassengerShirtColor);
+            DrawCircle(new Vector2(-10, 0), 5f, PassengerHelmetColor);
+        }
         // Rider
         DrawCircle(new Vector2(-3, 0), 8f, JacketColor);
         DrawCircle(new Vector2(2, 0), 5.5f, HelmetColor);
