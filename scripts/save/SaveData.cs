@@ -16,6 +16,9 @@ public sealed class GameSaveData
 {
     public WalletSaveData Wallet { get; set; } = new();
     public StatsSaveData Stats { get; set; } = new();
+    /// <summary>City and layout seed the player position belongs to.</summary>
+    public string RegionId { get; set; } = "";
+    public int LayoutSeed { get; set; }
     public PlayerSaveData? Player { get; set; }
 }
 

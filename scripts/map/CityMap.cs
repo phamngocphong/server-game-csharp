@@ -5,8 +5,8 @@ namespace ShipperSimulator;
 
 /// <summary>
 /// Builds a city from a <see cref="CityRegionData"/> resource:
-/// - roads, sidewalks and parks are drawn in _Draw()
-/// - buildings and trees are <see cref="Building"/> (StaticBody2D) obstacles
+/// - roads, sidewalks, parks and water are drawn in _Draw()
+/// - buildings and trees are <see cref="Building"/> (StaticBody2D) obstacles; water blocks are plain StaticBody2D
 /// - every block side gets a curbside <see cref="DeliveryLocation"/> for the job system
 /// </summary>
 public partial class CityMap : Node2D
@@ -27,9 +27,14 @@ public partial class CityMap : Node2D
         "Bike Repair", "Market Stall", "Studio",
     };
 
-    private readonly record struct Block(Rect2 Rect, DistrictData District, bool IsPark);
+    private enum BlockKind { Lots, Park, Water }
+
+    private readonly record struct Block(Rect2 Rect, DistrictData District, BlockKind Kind);
 
     [Export] public CityRegionData Region { get; set; } = null!;
+
+    /// <summary>Seed used by the last Build(): Region.LayoutSeed, or a random one when that is 0.</summary>
+    public int ActiveSeed { get; private set; }
 
     public IReadOnlyList<DeliveryLocation> Locations => _locations;
 
@@ -49,7 +54,8 @@ public partial class CityMap : Node2D
             return;
         }
         Clear();
-        _rng.Seed = (ulong)Region.LayoutSeed;
+        ActiveSeed = Region.LayoutSeed != 0 ? Region.LayoutSeed : (int)(GD.Randi() % int.MaxValue) + 1;
+        _rng.Seed = (ulong)ActiveSeed;
 
         _obstaclesRoot = new Node2D { Name = "Obstacles" };
         AddChild(_obstaclesRoot);
@@ -124,15 +130,39 @@ public partial class CityMap : Node2D
     {
         var rect = GetBlockRect(cell);
         var district = DistrictFor(cell);
-        var isPark = _rng.Randf() < district.ParkChance;
-        _blocks.Add(new Block(rect, district, isPark));
+        var roll = _rng.Randf();
+        var kind = roll < district.WaterChance || district.WaterChance >= 1f ? BlockKind.Water
+            : roll < district.WaterChance + district.ParkChance ? BlockKind.Park
+            : BlockKind.Lots;
+        _blocks.Add(new Block(rect, district, kind));
 
         var inner = rect.Grow(-SidewalkWidth);
-        if (isPark)
-            BuildPark(inner);
-        else
-            BuildLots(inner, district);
-        CreateLocations(cell, rect, district, isPark);
+        switch (kind)
+        {
+            case BlockKind.Water:
+                BuildWater(inner);
+                break;
+            case BlockKind.Park:
+                BuildPark(inner);
+                break;
+            default:
+                BuildLots(inner, district);
+                break;
+        }
+        CreateLocations(cell, rect, district, kind);
+    }
+
+    /// <summary>Water is drawn in _Draw(); here it only gets a collider so it cannot be driven through.</summary>
+    private void BuildWater(Rect2 inner)
+    {
+        var body = new StaticBody2D
+        {
+            CollisionLayer = Building.WorldLayer,
+            CollisionMask = 0,
+            Position = inner.GetCenter(),
+        };
+        body.AddChild(new CollisionShape2D { Shape = new RectangleShape2D { Size = inner.Size } });
+        _obstaclesRoot!.AddChild(body);
     }
 
     private void BuildLots(Rect2 inner, DistrictData district)
@@ -188,7 +218,7 @@ public partial class CityMap : Node2D
         _obstaclesRoot!.AddChild(body);
     }
 
-    private void CreateLocations(Vector2I cell, Rect2 rect, DistrictData district, bool isPark)
+    private void CreateLocations(Vector2I cell, Rect2 rect, DistrictData district, BlockKind kind)
     {
         (Vector2 Normal, string Street)[] sides =
         {
@@ -208,7 +238,12 @@ public partial class CityMap : Node2D
             var position = center + normal * (edgeDistance + CurbOffset)
                 + tangent * _rng.RandfRange(-0.3f, 0.3f) * sideLength;
 
-            var place = isPark ? "City Park" : PlaceNames[_rng.Randi() % (uint)PlaceNames.Length];
+            var place = kind switch
+            {
+                BlockKind.Park => "City Park",
+                BlockKind.Water => Region.WaterPlaceName,
+                _ => PlaceNames[_rng.Randi() % (uint)PlaceNames.Length],
+            };
             _locations.Add(new DeliveryLocation
             {
                 Id = _locations.Count,
@@ -258,8 +293,16 @@ public partial class CityMap : Node2D
         {
             var sidewalk = block.District.SidewalkColor;
             DrawRect(block.Rect, sidewalk);
-            var innerColor = block.IsPark ? Region.ParkColor : sidewalk.Darkened(0.15f);
-            DrawRect(block.Rect.Grow(-SidewalkWidth), innerColor);
+            var inner = block.Rect.Grow(-SidewalkWidth);
+            var innerColor = block.Kind switch
+            {
+                BlockKind.Park => Region.ParkColor,
+                BlockKind.Water => Region.WaterColor,
+                _ => sidewalk.Darkened(0.15f),
+            };
+            DrawRect(inner, innerColor);
+            if (block.Kind == BlockKind.Water)
+                DrawRect(inner, Region.WaterColor.Lightened(0.25f), false, 4f); // shoreline
             DrawRect(block.Rect, sidewalk.Darkened(0.35f), false, 3f);
         }
 

@@ -20,6 +20,8 @@ public partial class DistrictData : Resource
 
     [ExportGroup("Layout")]
     [Export(PropertyHint.Range, "0,1,0.01")] public float ParkChance { get; set; } = 0.1f;
+    /// <summary>Chance that a block is a lake/river (impassable, rolled before parks). 1 = all water.</summary>
+    [Export(PropertyHint.Range, "0,1,0.01")] public float WaterChance { get; set; }
     [Export(PropertyHint.Range, "1,6")] public int MinLots { get; set; } = 2;
     [Export(PropertyHint.Range, "1,6")] public int MaxLots { get; set; } = 3;
 

@@ -42,6 +42,17 @@ public partial class JobManager : Node
         Bus.DeliveryPopupClosed += OnDeliveryPopupClosed;
     }
 
+    public override void _ExitTree()
+    {
+        // C# events of [Signal]s declared in C# are plain delegates: Godot does not
+        // disconnect them when this node is freed, so unsubscribe explicitly.
+        Bus.JobAcceptRequested -= AcceptJob;
+        Bus.JobRefreshRequested -= RefreshJobs;
+        Bus.JobCancelRequested -= CancelActiveJob;
+        Bus.JobBoardOpened -= OnJobBoardOpened;
+        Bus.DeliveryPopupClosed -= OnDeliveryPopupClosed;
+    }
+
     public override void _UnhandledInput(InputEvent @event)
     {
         if (!@event.IsActionPressed("interact"))

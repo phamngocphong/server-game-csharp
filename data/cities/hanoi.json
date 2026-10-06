@@ -1,0 +1,112 @@
+{
+  "code": "hanoi",
+  "name": "Hanoi",
+  "seed": 1010,
+  "grid": {
+    "columns": 11,
+    "rows": 8,
+    "block_size": 380.0,
+    "road_width": 120.0
+  },
+  "colors": {
+    "road": "#3d3b3d",
+    "lane": "#e6d999a6",
+    "park": "#47854c",
+    "water": "#3d7378"
+  },
+  "water_place_name": "Lakeside",
+  "districts": [
+    {
+      "code": "hoan_kiem",
+      "name": "Hoan Kiem",
+      "area": [7, 2, 4, 6],
+      "sidewalk_color": "#a89985",
+      "building_colors": [
+        "#bf734c",
+        "#d9a659",
+        "#a6594c",
+        "#cc8c73"
+      ],
+      "park_chance": 0.05,
+      "water_chance": 0.08,
+      "min_lots": 4,
+      "max_lots": 6,
+      "reward_multiplier": 1.2
+    },
+    {
+      "code": "tay_ho",
+      "name": "Tay Ho",
+      "area": [0, 0, 11, 2],
+      "sidewalk_color": "#94a194",
+      "building_colors": [
+        "#d9d1b8",
+        "#b2c7b8",
+        "#c7ad8c"
+      ],
+      "park_chance": 0.18,
+      "water_chance": 0.35,
+      "min_lots": 2,
+      "max_lots": 3,
+      "reward_multiplier": 0.95
+    },
+    {
+      "code": "ba_dinh",
+      "name": "Ba Dinh",
+      "area": [4, 2, 3, 6],
+      "sidewalk_color": "#a39e8c",
+      "building_colors": [
+        "#e0c773",
+        "#ccb280",
+        "#b29973"
+      ],
+      "park_chance": 0.2,
+      "water_chance": 0.05,
+      "min_lots": 2,
+      "max_lots": 3,
+      "reward_multiplier": 1.0
+    },
+    {
+      "code": "cau_giay",
+      "name": "Cau Giay",
+      "area": [0, 2, 4, 6],
+      "sidewalk_color": "#999ea8",
+      "building_colors": [
+        "#597399",
+        "#808ca6",
+        "#4c667a"
+      ],
+      "park_chance": 0.06,
+      "water_chance": 0.02,
+      "min_lots": 1,
+      "max_lots": 2,
+      "reward_multiplier": 1.1
+    }
+  ],
+  "streets": {
+    "horizontal": [
+      "Thuy Khue St",
+      "Hoang Hoa Tham St",
+      "Phan Dinh Phung St",
+      "Hang Bong St",
+      "Trang Thi St",
+      "Tran Hung Dao St",
+      "Nguyen Du St",
+      "Tran Nhan Tong St",
+      "Dai Co Viet St"
+    ],
+    "vertical": [
+      "Xuan Thuy St",
+      "Cau Giay St",
+      "Nguyen Chi Thanh St",
+      "Lieu Giai St",
+      "Doi Can St",
+      "Hung Vuong St",
+      "Dien Bien Phu St",
+      "Ly Thuong Kiet St",
+      "Hang Gai St",
+      "Hang Bac St",
+      "Hang Bai St",
+      "Tran Quang Khai St"
+    ]
+  }
+}

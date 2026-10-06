@@ -22,6 +22,13 @@ public partial class DeliveryResultPopup : Control
         _continueButton.Pressed += Close;
     }
 
+    public override void _ExitTree()
+    {
+        // C# events of [Signal]s declared in C# are plain delegates: Godot does not
+        // disconnect them when this node is freed, so unsubscribe explicitly.
+        EventBus.Instance.JobDelivered -= ShowResult;
+    }
+
     public override void _UnhandledInput(InputEvent @event)
     {
         if (Visible && @event.IsActionPressed("interact"))

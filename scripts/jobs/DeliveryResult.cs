@@ -9,9 +9,9 @@ namespace ShipperSimulator;
 /// </summary>
 public partial class DeliveryResult : RefCounted
 {
-    public JobData Job { get; set; } = null!;
-    public int Reward { get; set; }
-    public double ElapsedTime { get; set; }
-    public int NewBalance { get; set; }
-    public int TotalDeliveries { get; set; }
+	public JobData Job { get; set; } = null!;
+	public int Reward { get; set; }
+	public double ElapsedTime { get; set; }
+	public int NewBalance { get; set; }
+	public int TotalDeliveries { get; set; }
 }

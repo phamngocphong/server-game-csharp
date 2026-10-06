@@ -50,6 +50,18 @@ public partial class JobBoard : Control
         UpdateEmptyState(0);
     }
 
+    public override void _ExitTree()
+    {
+        // C# events of [Signal]s declared in C# are plain delegates: Godot does not
+        // disconnect them when this node is freed, so unsubscribe explicitly.
+        var bus = EventBus.Instance;
+        bus.JobsUpdated -= OnJobsUpdated;
+        bus.JobBoardOpenRequested -= Open;
+        bus.JobStateChanged -= OnJobStateChanged;
+        bus.BalanceChanged -= OnBalanceChanged;
+        bus.StatsChanged -= RefreshHistory;
+    }
+
     public override void _UnhandledInput(InputEvent @event)
     {
         if (!@event.IsActionPressed("toggle_job_board"))

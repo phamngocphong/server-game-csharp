@@ -34,6 +34,17 @@ public partial class Player : CharacterBody2D
         bus.JobCancelled += OnJobCancelled;
     }
 
+    public override void _ExitTree()
+    {
+        // C# events of [Signal]s declared in C# are plain delegates: Godot does not
+        // disconnect them when this node is freed, so unsubscribe explicitly.
+        var bus = EventBus.Instance;
+        bus.PlayerControlsLocked -= OnControlsLocked;
+        bus.JobPickedUp -= OnJobPickedUp;
+        bus.JobDelivered -= OnJobDelivered;
+        bus.JobCancelled -= OnJobCancelled;
+    }
+
     public override void _PhysicsProcess(double delta)
     {
         var dt = (float)delta;

@@ -1,0 +1,123 @@
+{
+  "code": "da_nang",
+  "name": "Da Nang",
+  "seed": 2020,
+  "grid": {
+    "columns": 9,
+    "rows": 7,
+    "block_size": 460.0,
+    "road_width": 160.0
+  },
+  "colors": {
+    "road": "#42454c",
+    "lane": "#f2f2f299",
+    "park": "#529457",
+    "water": "#3373a6"
+  },
+  "water_place_name": "Han Riverside",
+  "districts": [
+    {
+      "code": "hai_chau",
+      "name": "Hai Chau",
+      "area": [0, 3, 4, 4],
+      "sidewalk_color": "#9ea3ad",
+      "building_colors": [
+        "#668cb2",
+        "#8c99b2",
+        "#596b8c",
+        "#d9dbe6"
+      ],
+      "park_chance": 0.08,
+      "water_chance": 0.0,
+      "min_lots": 1,
+      "max_lots": 2,
+      "reward_multiplier": 1.15
+    },
+    {
+      "code": "thanh_khe",
+      "name": "Thanh Khe",
+      "area": [0, 0, 4, 3],
+      "sidewalk_color": "#9e998f",
+      "building_colors": [
+        "#ccbfa6",
+        "#b29980",
+        "#99a6b2"
+      ],
+      "park_chance": 0.1,
+      "water_chance": 0.0,
+      "min_lots": 2,
+      "max_lots": 4,
+      "reward_multiplier": 0.9
+    },
+    {
+      "code": "han_river",
+      "name": "Han River",
+      "area": [4, 0, 1, 7],
+      "sidewalk_color": "#999994",
+      "building_colors": [
+        "#999999"
+      ],
+      "park_chance": 0.0,
+      "water_chance": 1.0,
+      "min_lots": 1,
+      "max_lots": 1,
+      "reward_multiplier": 1.0
+    },
+    {
+      "code": "son_tra",
+      "name": "Son Tra",
+      "area": [5, 0, 4, 4],
+      "sidewalk_color": "#c7b894",
+      "building_colors": [
+        "#f2ebd9",
+        "#99ccd9",
+        "#e6bf99"
+      ],
+      "park_chance": 0.3,
+      "water_chance": 0.05,
+      "min_lots": 1,
+      "max_lots": 3,
+      "reward_multiplier": 1.0
+    },
+    {
+      "code": "ngu_hanh_son",
+      "name": "Ngu Hanh Son",
+      "area": [5, 4, 4, 3],
+      "sidewalk_color": "#ada899",
+      "building_colors": [
+        "#d9d9d1",
+        "#b2b2ad",
+        "#8c998c"
+      ],
+      "park_chance": 0.22,
+      "water_chance": 0.0,
+      "min_lots": 1,
+      "max_lots": 2,
+      "reward_multiplier": 1.1
+    }
+  ],
+  "streets": {
+    "horizontal": [
+      "Nguyen Tat Thanh St",
+      "Ly Tu Trong St",
+      "Hung Vuong St",
+      "Le Duan St",
+      "Tran Phu St",
+      "Nguyen Van Linh St",
+      "2 Thang 9 St",
+      "Le Van Hien St"
+    ],
+    "vertical": [
+      "Dien Bien Phu St",
+      "Ong Ich Khiem St",
+      "Hoang Dieu St",
+      "Nguyen Chi Thanh St",
+      "Bach Dang St",
+      "Tran Hung Dao St",
+      "Ngo Quyen St",
+      "Ho Nghinh St",
+      "Vo Nguyen Giap St",
+      "Truong Sa St"
+    ]
+  }
+}

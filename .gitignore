@@ -1,3 +1,38 @@
-# Godot 4+ specific ignores
+# --- Godot 4+ ----------------------------------------------------------------
+# Editor cache, imported assets, C# build output (.godot/mono). Regenerated on open.
 .godot/
 /android/
+# Export output
+/export/
+/build/
+/builds/
+*.translation
+
+# Keep: project.godot, *.tscn, *.tres, *.import, *.uid, export_presets.cfg
+# (*.uid files are needed since Godot 4.4: they keep resource references stable.)
+
+# --- C# / .NET ---------------------------------------------------------------
+.mono/
+data_*/
+mono_crash.*.json
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
+
+# --- IDEs ---------------------------------------------------------------------
+.vs/
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/settings.json
+*.swp
+*~
+
+# --- OS -----------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+Desktop.ini

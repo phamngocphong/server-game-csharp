@@ -11,7 +11,7 @@ namespace ShipperSimulator;
 public partial class SaveManager : Node
 {
     public const string SavePath = "user://savegame.json";
-    public const int SaveVersion = 1;
+    public const int SaveVersion = 2;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -80,5 +80,11 @@ public partial class SaveManager : Node
     }
 
     /// <summary>Upgrades older save formats. Add a branch per version bump.</summary>
-    private static SaveFile Migrate(SaveFile data) => data;
+    private static SaveFile Migrate(SaveFile data)
+    {
+        // v1 -> v2: v1 had a single map and no region_id. The empty RegionId never
+        // matches a city, so the old player position is dropped; wallet and stats are kept.
+        data.Version = SaveVersion;
+        return data;
+    }
 }

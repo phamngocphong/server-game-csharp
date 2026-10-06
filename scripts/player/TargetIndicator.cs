@@ -23,6 +23,14 @@ public partial class TargetIndicator : Node2D
         EventBus.Instance.NavigationTargetCleared += OnTargetCleared;
     }
 
+    public override void _ExitTree()
+    {
+        // C# events of [Signal]s declared in C# are plain delegates: Godot does not
+        // disconnect them when this node is freed, so unsubscribe explicitly.
+        EventBus.Instance.NavigationTargetChanged -= OnTargetChanged;
+        EventBus.Instance.NavigationTargetCleared -= OnTargetCleared;
+    }
+
     public override void _Process(double delta)
     {
         if (!_active)

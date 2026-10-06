@@ -3,13 +3,14 @@ using Godot;
 namespace ShipperSimulator;
 
 /// <summary>
-/// Always-on HUD: wallet, current district, active job, interaction prompt,
+/// Always-on HUD: wallet, current city and district, active job, interaction prompt,
 /// speedometer and toast notifications.
 /// </summary>
 public partial class Hud : Control
 {
     private Label _balanceLabel = null!;
     private Label _deliveriesLabel = null!;
+    private Label _cityLabel = null!;
     private Label _districtLabel = null!;
     private Control _activeJobPanel = null!;
     private Label _jobStatusLabel = null!;
@@ -31,6 +32,7 @@ public partial class Hud : Control
     {
         _balanceLabel = GetNode<Label>("%BalanceLabel");
         _deliveriesLabel = GetNode<Label>("%DeliveriesLabel");
+        _cityLabel = GetNode<Label>("%CityLabel");
         _districtLabel = GetNode<Label>("%DistrictLabel");
         _activeJobPanel = GetNode<Control>("%ActiveJobPanel");
         _jobStatusLabel = GetNode<Label>("%JobStatusLabel");
@@ -61,12 +63,27 @@ public partial class Hud : Control
         RefreshStats();
     }
 
+    public override void _ExitTree()
+    {
+        // C# events of [Signal]s declared in C# are plain delegates: Godot does not
+        // disconnect them when this node is freed, so unsubscribe explicitly.
+        var bus = EventBus.Instance;
+        bus.BalanceChanged -= OnBalanceChanged;
+        bus.StatsChanged -= RefreshStats;
+        bus.JobStateChanged -= OnJobStateChanged;
+        bus.NavigationTargetChanged -= OnTargetChanged;
+        bus.NavigationTargetCleared -= OnTargetCleared;
+        bus.InteractionPromptChanged -= OnPromptChanged;
+        bus.NotificationRequested -= ShowToast;
+    }
+
     public override void _Process(double delta)
     {
         var player = GameManager.Instance.Player;
         if (player == null)
             return;
         _speedLabel.Text = $"{Mathf.RoundToInt(player.GetSpeedKmh())} km/h";
+        _cityLabel.Text = GameManager.Instance.CityMap?.Region.DisplayName ?? "";
         _districtLabel.Text = GameManager.Instance.GetCurrentDistrict()?.DisplayName ?? "";
         if (_hasTarget && _activeJobPanel.Visible)
         {

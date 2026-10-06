@@ -1,0 +1,144 @@
+{
+  "code": "ho_chi_minh_city",
+  "name": "Ho Chi Minh City",
+  "seed": 3030,
+  "grid": {
+    "columns": 12,
+    "rows": 9,
+    "block_size": 420.0,
+    "road_width": 140.0
+  },
+  "colors": {
+    "road": "#383b42",
+    "lane": "#d9cc73b2",
+    "park": "#4c8c4c",
+    "water": "#52666b"
+  },
+  "water_place_name": "Saigon Riverside",
+  "districts": [
+    {
+      "code": "district_1",
+      "name": "District 1",
+      "area": [4, 2, 4, 4],
+      "sidewalk_color": "#999ea8",
+      "building_colors": [
+        "#597399",
+        "#738094",
+        "#4c6180",
+        "#8c99b2"
+      ],
+      "park_chance": 0.08,
+      "water_chance": 0.0,
+      "min_lots": 1,
+      "max_lots": 2,
+      "reward_multiplier": 1.25
+    },
+    {
+      "code": "district_3",
+      "name": "District 3",
+      "area": [0, 0, 4, 6],
+      "sidewalk_color": "#a3998a",
+      "building_colors": [
+        "#d9bf8c",
+        "#bf8066",
+        "#e6d9bf"
+      ],
+      "park_chance": 0.12,
+      "water_chance": 0.0,
+      "min_lots": 3,
+      "max_lots": 5,
+      "reward_multiplier": 1.0
+    },
+    {
+      "code": "binh_thanh",
+      "name": "Binh Thanh",
+      "area": [4, 0, 8, 2],
+      "sidewalk_color": "#94948f",
+      "building_colors": [
+        "#b2a699",
+        "#998c80",
+        "#808c99"
+      ],
+      "park_chance": 0.08,
+      "water_chance": 0.03,
+      "min_lots": 3,
+      "max_lots": 5,
+      "reward_multiplier": 0.95
+    },
+    {
+      "code": "saigon_river",
+      "name": "Saigon River",
+      "area": [8, 2, 1, 7],
+      "sidewalk_color": "#999994",
+      "building_colors": [
+        "#999999"
+      ],
+      "park_chance": 0.0,
+      "water_chance": 1.0,
+      "min_lots": 1,
+      "max_lots": 1,
+      "reward_multiplier": 1.0
+    },
+    {
+      "code": "thu_duc",
+      "name": "Thu Duc",
+      "area": [9, 2, 3, 7],
+      "sidewalk_color": "#94a394",
+      "building_colors": [
+        "#d9d9cc",
+        "#99bfb2",
+        "#b2b8c7"
+      ],
+      "park_chance": 0.2,
+      "water_chance": 0.0,
+      "min_lots": 1,
+      "max_lots": 3,
+      "reward_multiplier": 1.05
+    },
+    {
+      "code": "district_7",
+      "name": "District 7",
+      "area": [0, 6, 8, 3],
+      "sidewalk_color": "#99a19e",
+      "building_colors": [
+        "#bfccd9",
+        "#8ca6bf",
+        "#e6e0d1"
+      ],
+      "park_chance": 0.15,
+      "water_chance": 0.04,
+      "min_lots": 1,
+      "max_lots": 2,
+      "reward_multiplier": 1.1
+    }
+  ],
+  "streets": {
+    "horizontal": [
+      "Tran Hung Dao St",
+      "Ly Thuong Kiet St",
+      "Nguyen Trai St",
+      "Le Duan Blvd",
+      "Tran Phu St",
+      "Ba Thang Hai St",
+      "Nguyen Thi Minh Khai St",
+      "Vo Thi Sau St",
+      "Phan Dang Luu St",
+      "Nguyen Van Linh Blvd"
+    ],
+    "vertical": [
+      "Le Loi Blvd",
+      "Nguyen Hue St",
+      "Hai Ba Trung St",
+      "Pasteur St",
+      "Nam Ky Khoi Nghia St",
+      "Dong Khoi St",
+      "Ham Nghi Ave",
+      "Ton Duc Thang St",
+      "Dien Bien Phu St",
+      "Vo Van Tan St",
+      "Cach Mang Thang Tam St",
+      "Xa Lo Ha Noi",
+      "Mai Chi Tho Blvd"
+    ]
+  }
+}

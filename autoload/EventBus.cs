@@ -10,45 +10,45 @@ namespace ShipperSimulator;
 /// </summary>
 public partial class EventBus : Node
 {
-    public static EventBus Instance { get; private set; } = null!;
+	public static EventBus Instance { get; private set; } = null!;
 
-    // --- Job flow -------------------------------------------------------------
-    /// <summary>The list of jobs offered on the board changed.</summary>
-    [Signal] public delegate void JobsUpdatedEventHandler(Array<JobData> jobs);
+	// --- Job flow -------------------------------------------------------------
+	/// <summary>The list of jobs offered on the board changed.</summary>
+	[Signal] public delegate void JobsUpdatedEventHandler(Array<JobData> jobs);
 
-    // UI -> JobManager requests.
-    [Signal] public delegate void JobAcceptRequestedEventHandler(JobData job);
-    [Signal] public delegate void JobRefreshRequestedEventHandler();
-    [Signal] public delegate void JobCancelRequestedEventHandler();
+	// UI -> JobManager requests.
+	[Signal] public delegate void JobAcceptRequestedEventHandler(JobData job);
+	[Signal] public delegate void JobRefreshRequestedEventHandler();
+	[Signal] public delegate void JobCancelRequestedEventHandler();
 
-    // JobManager -> everyone.
-    [Signal] public delegate void JobAcceptedEventHandler(JobData job);
-    [Signal] public delegate void JobPickedUpEventHandler(JobData job);
-    [Signal] public delegate void JobDeliveredEventHandler(DeliveryResult result);
-    [Signal] public delegate void JobCancelledEventHandler(JobData job);
-    /// <summary><paramref name="state"/> is a <see cref="JobManager.State"/>; job is null when idle.</summary>
-    [Signal] public delegate void JobStateChangedEventHandler(int state, JobData job);
+	// JobManager -> everyone.
+	[Signal] public delegate void JobAcceptedEventHandler(JobData job);
+	[Signal] public delegate void JobPickedUpEventHandler(JobData job);
+	[Signal] public delegate void JobDeliveredEventHandler(DeliveryResult result);
+	[Signal] public delegate void JobCancelledEventHandler(JobData job);
+	/// <summary><paramref name="state"/> is a <see cref="JobManager.State"/>; job is null when idle.</summary>
+	[Signal] public delegate void JobStateChangedEventHandler(int state, JobData job);
 
-    // --- Navigation / interaction ---------------------------------------------
-    [Signal] public delegate void NavigationTargetChangedEventHandler(Vector2 target, string label, Color color);
-    [Signal] public delegate void NavigationTargetClearedEventHandler();
-    /// <summary>Empty text hides the prompt.</summary>
-    [Signal] public delegate void InteractionPromptChangedEventHandler(string text);
+	// --- Navigation / interaction ---------------------------------------------
+	[Signal] public delegate void NavigationTargetChangedEventHandler(Vector2 target, string label, Color color);
+	[Signal] public delegate void NavigationTargetClearedEventHandler();
+	/// <summary>Empty text hides the prompt.</summary>
+	[Signal] public delegate void InteractionPromptChangedEventHandler(string text);
 
-    // --- Economy / stats ------------------------------------------------------
-    [Signal] public delegate void BalanceChangedEventHandler(int balance, int delta);
-    [Signal] public delegate void StatsChangedEventHandler();
+	// --- Economy / stats ------------------------------------------------------
+	[Signal] public delegate void BalanceChangedEventHandler(int balance, int delta);
+	[Signal] public delegate void StatsChangedEventHandler();
 
-    // --- UI -------------------------------------------------------------------
-    [Signal] public delegate void JobBoardOpenRequestedEventHandler();
-    [Signal] public delegate void JobBoardOpenedEventHandler();
-    [Signal] public delegate void DeliveryPopupClosedEventHandler();
-    [Signal] public delegate void PlayerControlsLockedEventHandler(bool locked);
-    [Signal] public delegate void NotificationRequestedEventHandler(string text);
+	// --- UI -------------------------------------------------------------------
+	[Signal] public delegate void JobBoardOpenRequestedEventHandler();
+	[Signal] public delegate void JobBoardOpenedEventHandler();
+	[Signal] public delegate void DeliveryPopupClosedEventHandler();
+	[Signal] public delegate void PlayerControlsLockedEventHandler(bool locked);
+	[Signal] public delegate void NotificationRequestedEventHandler(string text);
 
-    // --- Persistence ----------------------------------------------------------
-    [Signal] public delegate void GameSavedEventHandler();
-    [Signal] public delegate void GameLoadedEventHandler();
+	// --- Persistence ----------------------------------------------------------
+	[Signal] public delegate void GameSavedEventHandler();
+	[Signal] public delegate void GameLoadedEventHandler();
 
-    public override void _EnterTree() => Instance = this;
+	public override void _EnterTree() => Instance = this;
 }
