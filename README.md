@@ -71,6 +71,14 @@ Each vehicle type has a **collision score**. If you hit one at a closing speed o
 | Car | 4 | 2.4 s |
 | Bus | 6 | 3.6 s |
 
+### Traffic lights and fines
+
+Some of the inner intersections have traffic lights: 50% in Hanoi, 35% in Da Nang and 45% in HCMC, set by `traffic.light_chance` in the city JSON. Which intersections get lights depends on the layout seed, so the lights stay in the same places. Each light runs **green 8 s, yellow 2 s, all red 1 s**, then switches to the other direction. Each intersection starts at a random point in its cycle. White stop lines and a signal head on the near-right corner show each approach.
+
+- **AI traffic** stops at the stop line on red. It also stops on yellow if it still can, and otherwise goes through. Vehicles queue behind each other, and a queue at a light is never treated as a jam.
+- **You** are fined if you enter a lit intersection while the light for your direction is **red**. Entering on yellow is allowed. The fine is **$20**, and every earlier violation in the last 2 minutes adds another $20, up to ×3 ($60). The money comes out of your wallet, which can go negative. The screen flashes red and a toast shows the fine.
+- **Records:** the Job Board shows `Red lights run` and `Fines`, and both are saved (save version 4).
+
 ### Driver rating (1-5 stars)
 
 Every finished or failed job gets a customer rating:
@@ -101,7 +109,7 @@ scripts/
   map/         CityMap (procedural builder), CityLoader + CityConfig (JSON -> CityRegionData), Building, CityRegionData, DistrictData, DeliveryLocation
   jobs/        JobManager (state machine), JobGenerator, JobTemplate, JobData, JobMarker, DeliveryResult
   economy/     Wallet (+ WalletEntry), PlayerStats, Reputation (driver rating)
-  traffic/     TrafficManager (spawner), TrafficVehicle (AI road user), TrafficVehicleData
+  traffic/     TrafficManager (spawner), TrafficVehicle (AI road user), TrafficVehicleData, TrafficLights (signals + fines)
   save/        SaveData.cs: JSON save DTOs
   ui/          MainMenu, Hud, JobBoard, JobEntry, DeliveryResultPopup, StarRating (draws 0-5 stars)
 resources/
@@ -145,6 +153,11 @@ Physics layers: 1 = player, 2 = world, 3 = interactables (markers), 4 = traffic.
   - **Braking:** an `Area2D` sensor in front of each vehicle brakes for the player and for traffic heading the same way. Crossing traffic is ignored, so vehicles can briefly overlap in the middle of an intersection. If a vehicle waits behind other traffic for more than 3 s, it ignores that traffic for a moment, which clears jams.
   - **Crashes:** `Player.CheckTrafficCrash()` compares the closing speed along the contact normal with `MinCrashSpeed` and then calls `Crash()`. That sets `StunTimeLeft`, pushes the bike back, makes the vehicle stop for 1.5 s and emits `EventBus.PlayerCrashed`.
   - **Tuning:** vehicle sizes, colors, speeds, `CollisionScore` and `SpawnWeight` are in `resources/traffic/*.tres`. The seconds per collision point are set by `TrafficVehicleData.StunSecondsPerPoint`.
+- **TrafficLights** (the `TrafficLights` node in `main.tscn`):
+  - **Signals:** `GetSignal(node, dir)` and `GetSignalForAxis(node, horizontal)` return `None`, `Green`, `Yellow` or `Red`. A vehicle asks for the signal of the intersection it is driving towards, via `TrafficVehicle.DistanceToStopLine()`.
+  - **Enforcement:** each physics frame, `CheckPlayer()` finds the intersection the player is in. On entering, it uses the side the player came from to pick the east-west or north-south light. It ignores entries when the player is stunned or slower than `MinViolationSpeed`.
+  - **Fines:** `GameManager.ApplyTrafficFine()` takes the money and records the violation, then `EventBus.TrafficFined` updates the HUD.
+  - **Settings:** timings (`GreenTime`, `YellowTime`, `AllRedTime`) and fines (`BaseFine`, `MaxFineMultiplier`, `RepeatWindow`) are exported on the node.
 
 ## Adding a city
 
@@ -176,7 +189,8 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
   },
   "traffic": {
     "count": -1,                    // number of AI vehicles; -1 = about 0.6 per block
-    "weights": { "motorbike": 8, "car": 2, "bicycle": 3, "bus": 0.5 }  // ids from resources/traffic
+    "weights": { "motorbike": 8, "car": 2, "bicycle": 3, "bus": 0.5 },  // ids from resources/traffic
+    "light_chance": 0.45            // share of inner intersections with traffic lights (0-1)
   }
 }
 ```
@@ -190,6 +204,7 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
 | Fuel | Add `FuelCapacity` and `Consumption` to `VehicleStats`. Add a `FuelSystem` node that reads the player's speed and calls `Wallet.Spend()` at gas stations (a new location type in `CityMap`). |
 | Weather | Add a `WeatherManager` autoload. Have it adjust `VehicleStats.Grip` and return a bonus from `GameManager.GetRewardMultiplier()`. |
 | More traffic types | Add a `TrafficVehicleData` .tres (for example a truck: `Shape = Bus`, a higher `CollisionScore`) and add it to `VehicleTypes` on the `Traffic` node. Cities can weight it by `VehicleId`. |
+| More traffic laws | Follow the `TrafficLights.CheckPlayer()` pattern (for example speeding in a district, or driving against traffic) and charge with `GameManager.ApplyTrafficFine()`. |
 | Crash consequences | Listen to `EventBus.PlayerCrashed`, for example to damage fragile cargo, upset passengers (`Reputation`) or count crashes in `PlayerStats`. |
 | Reputation | Add a stat to `PlayerStats` and `StatsSaveData`, and adjust it in `GameManager.CompleteDelivery()`. Expose it through `GetRewardMultiplier()` and add fields to `DeliveryResult`. |
 | Vehicle upgrades | Add more `VehicleStats` .tres files, buy them with `Wallet.Spend()`, and swap `Player.VehicleStats`. Save the owned vehicle id in the save DTOs. |

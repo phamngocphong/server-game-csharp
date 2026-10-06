@@ -116,6 +116,7 @@
       "bicycle": 3,
       "car": 2,
       "bus": 0.5
-    }
+    },
+    "light_chance": 0.5
   }
 }

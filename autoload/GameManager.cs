@@ -160,6 +160,13 @@ public partial class GameManager : Node
 		return km.ToString("0.0", CultureInfo.InvariantCulture) + " km";
 	}
 
+	/// <summary>Takes a traffic fine from the wallet (the balance may go negative) and records it.</summary>
+	public void ApplyTrafficFine(int amount, string reason)
+	{
+		Wallet.Add(-amount, $"Fine: {reason}");
+		Stats.RecordFine(amount);
+	}
+
 	/// <summary>Rating with one decimal, e.g. "4.7".</summary>
 	public static string FormatRating(float rating) => rating.ToString("0.0", CultureInfo.InvariantCulture);
 

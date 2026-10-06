@@ -14,7 +14,7 @@ public partial class SaveManager : Node
 
     /// <summary>File used by save/load. Change it for save slots or to keep tests away from the real save.</summary>
     public string SavePath { get; set; } = DefaultSavePath;
-    public const int SaveVersion = 3;
+    public const int SaveVersion = 4;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -89,6 +89,7 @@ public partial class SaveManager : Node
         // matches a city, so the old player position is dropped; wallet and stats are kept.
         // v2 -> v3: adds reputation and total_tips. Missing values load as a new driver
         // (five starting 5-star ratings) and 0 tips, so nothing to convert.
+        // v3 -> v4: adds total_violations and total_fines (default 0).
         data.Version = SaveVersion;
         return data;
     }

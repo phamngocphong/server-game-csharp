@@ -38,6 +38,8 @@ public partial class EventBus : Node
 	[Signal] public delegate void NavigationTargetClearedEventHandler();
 	/// <summary>The player crashed into traffic and cannot drive for <paramref name="stunSeconds"/>.</summary>
 	[Signal] public delegate void PlayerCrashedEventHandler(string vehicleName, int collisionScore, float stunSeconds);
+	/// <summary>The player was fined <paramref name="amount"/>; <paramref name="multiplier"/> > 1 for repeat offences.</summary>
+	[Signal] public delegate void TrafficFinedEventHandler(int amount, string reason, int multiplier);
 	/// <summary>Empty text hides the prompt.</summary>
 	[Signal] public delegate void InteractionPromptChangedEventHandler(string text);
 

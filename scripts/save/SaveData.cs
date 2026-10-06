@@ -35,6 +35,8 @@ public sealed class StatsSaveData
     public int TotalEarned { get; set; }
     public int BestReward { get; set; }
     public int TotalTips { get; set; }
+    public int TotalViolations { get; set; }
+    public int TotalFines { get; set; }
     public float TotalDistance { get; set; }
     public double PlayTime { get; set; }
 }

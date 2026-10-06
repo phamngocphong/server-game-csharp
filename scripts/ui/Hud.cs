@@ -26,6 +26,7 @@ public partial class Hud : Control
     private Label _speedLabel = null!;
     private Control _toastPanel = null!;
     private Label _toastLabel = null!;
+    private ColorRect _flashRect = null!;
 
     private Vector2 _target;
     private bool _hasTarget;
@@ -51,6 +52,7 @@ public partial class Hud : Control
         _speedLabel = GetNode<Label>("%SpeedLabel");
         _toastPanel = GetNode<Control>("%ToastPanel");
         _toastLabel = GetNode<Label>("%ToastLabel");
+        _flashRect = GetNode<ColorRect>("%FlashRect");
 
         var bus = EventBus.Instance;
         bus.BalanceChanged += OnBalanceChanged;
@@ -63,11 +65,13 @@ public partial class Hud : Control
         bus.InteractionPromptChanged += OnPromptChanged;
         bus.NotificationRequested += ShowToast;
         bus.PlayerCrashed += OnPlayerCrashed;
+        bus.TrafficFined += OnTrafficFined;
         _cancelButton.Pressed += OnCancelPressed;
 
         _activeJobPanel.Hide();
         _promptPanel.Hide();
         _toastPanel.Hide();
+        _flashRect.Hide();
         OnBalanceChanged(GameManager.Instance.Wallet.Balance, 0);
         RefreshStats();
         RefreshRating();
@@ -88,6 +92,7 @@ public partial class Hud : Control
         bus.InteractionPromptChanged -= OnPromptChanged;
         bus.NotificationRequested -= ShowToast;
         bus.PlayerCrashed -= OnPlayerCrashed;
+        bus.TrafficFined -= OnTrafficFined;
     }
 
     public override void _Process(double delta)
@@ -129,9 +134,9 @@ public partial class Hud : Control
     private void OnBalanceChanged(int balance, int delta)
     {
         _balanceLabel.Text = GameManager.FormatMoney(balance);
-        if (delta > 0)
+        if (delta != 0)
         {
-            _balanceLabel.Modulate = new Color(0.4f, 1f, 0.5f);
+            _balanceLabel.Modulate = delta > 0 ? new Color(0.4f, 1f, 0.5f) : new Color(1f, 0.35f, 0.3f);
             CreateTween().TweenProperty(_balanceLabel, "modulate", Colors.White, 0.8);
         }
     }
@@ -141,6 +146,18 @@ public partial class Hud : Control
 
     private void OnPlayerCrashed(string vehicleName, int collisionScore, float stunSeconds) =>
         ShowToast($"Crashed into a {vehicleName}! (impact {collisionScore}) - stunned {stunSeconds.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} s");
+
+    private void OnTrafficFined(int amount, string reason, int multiplier)
+    {
+        var repeat = multiplier > 1 ? $" (repeat offence x{multiplier})" : "";
+        ShowToast($"{reason}! Fine -{GameManager.FormatMoney(amount)}{repeat}");
+        // Speed-camera flash.
+        _flashRect.Show();
+        _flashRect.Color = new Color(1f, 0.15f, 0.1f, 0.35f);
+        var tween = CreateTween();
+        tween.TweenProperty(_flashRect, "color:a", 0.0, 0.5);
+        tween.TweenCallback(Callable.From(_flashRect.Hide));
+    }
 
     private void RefreshRating()
     {

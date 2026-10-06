@@ -20,15 +20,21 @@
 [ext_resource type="Resource" path="res://resources/traffic/motorbike.tres" id="18_motorbike"]
 [ext_resource type="Resource" path="res://resources/traffic/car.tres" id="19_car"]
 [ext_resource type="Resource" path="res://resources/traffic/bus.tres" id="20_bus"]
+[ext_resource type="Script" path="res://scripts/traffic/TrafficLights.cs" id="21_lights"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
 
 [node name="CityMap" parent="." instance=ExtResource("2_map")]
 
-[node name="Traffic" type="Node2D" parent="." node_paths=PackedStringArray("Map")]
+[node name="TrafficLights" type="Node2D" parent="." node_paths=PackedStringArray("Map")]
+script = ExtResource("21_lights")
+Map = NodePath("../CityMap")
+
+[node name="Traffic" type="Node2D" parent="." node_paths=PackedStringArray("Map", "Lights")]
 script = ExtResource("15_traffic")
 Map = NodePath("../CityMap")
+Lights = NodePath("../TrafficLights")
 VehicleTypes = Array[ExtResource("16_vehicle_data")]([ExtResource("17_bicycle"), ExtResource("18_motorbike"), ExtResource("19_car"), ExtResource("20_bus")])
 
 [node name="Markers" type="Node2D" parent="."]

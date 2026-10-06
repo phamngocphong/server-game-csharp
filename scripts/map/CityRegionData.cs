@@ -34,6 +34,8 @@ public partial class CityRegionData : Resource
 	[Export] public int TrafficCount { get; set; } = -1;
 	/// <summary>Spawn weight per TrafficVehicleData.VehicleId; missing ids use the vehicle's own SpawnWeight.</summary>
 	[Export] public Godot.Collections.Dictionary<string, float> TrafficWeights { get; set; } = new();
+	/// <summary>Share (0-1) of inner intersections that get traffic lights.</summary>
+	[Export(PropertyHint.Range, "0,1,0.05")] public float TrafficLightChance { get; set; } = 0.45f;
 
 	[ExportGroup("Content")]
 	/// <summary>Place name used for addresses next to water blocks.</summary>

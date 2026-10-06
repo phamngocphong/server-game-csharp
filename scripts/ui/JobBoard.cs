@@ -154,11 +154,12 @@ public partial class JobBoard : Control
             $"On time: {rep.TotalOnTime}   Late: {rep.TotalLate}   Failed: {rep.TotalFailed}   Cancelled: {rep.TotalCancelled}\n" +
             $"Deliveries: {stats.TotalDeliveries}   Earned: {GameManager.FormatMoney(stats.TotalEarned)}   " +
             $"Tips: {GameManager.FormatMoney(stats.TotalTips)}\nBest: {GameManager.FormatMoney(stats.BestReward)}   " +
-            $"Play time: {GameManager.FormatTime(stats.PlayTime)}";
+            $"Play time: {GameManager.FormatTime(stats.PlayTime)}\n" +
+            $"Red lights run: {stats.TotalViolations}   Fines: {GameManager.FormatMoney(stats.TotalFines)}";
 
         var lines = GameManager.Instance.Wallet.History
             .Take(HistoryLines)
-            .Select(e => $"+{GameManager.FormatMoney(e.Amount)}  {e.Description}")
+            .Select(e => $"{(e.Amount >= 0 ? "+" : "")}{GameManager.FormatMoney(e.Amount)}  {e.Description}")
             .ToList();
         _historyLabel.Text = lines.Count > 0 ? string.Join("\n", lines) : "No earnings yet.";
     }

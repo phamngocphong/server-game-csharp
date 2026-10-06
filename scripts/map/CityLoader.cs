@@ -99,6 +99,7 @@ public static class CityLoader
             HorizontalStreetNames = c.Streets.Horizontal.ToArray(),
             VerticalStreetNames = c.Streets.Vertical.ToArray(),
             TrafficCount = c.Traffic.Count,
+            TrafficLightChance = c.Traffic.LightChance,
         };
         foreach (var (id, weight) in c.Traffic.Weights)
             region.TrafficWeights[id] = weight;
@@ -167,6 +168,8 @@ public static class CityLoader
             errors.Add("traffic.count must be 400 or less (-1 = automatic).");
         if (c.Traffic.Weights.Values.Any(w => w < 0f))
             errors.Add("traffic.weights cannot be negative.");
+        if (c.Traffic.LightChance is < 0f or > 1f)
+            errors.Add("traffic.light_chance must be between 0 and 1.");
         return errors;
     }
 

@@ -18,6 +18,8 @@ public partial class TrafficManager : Node2D
     private const float SpawnClearance = 450f;
 
     [Export] public CityMap Map { get; set; } = null!;
+    /// <summary>Optional: vehicles stop at its red lights.</summary>
+    [Export] public TrafficLights? Lights { get; set; }
     [Export] public Godot.Collections.Array<TrafficVehicleData> VehicleTypes { get; set; } = new();
 
     public IReadOnlyList<TrafficVehicle> Vehicles => _vehicles;
@@ -62,7 +64,8 @@ public partial class TrafficManager : Node2D
                 continue;
 
             var vehicle = new TrafficVehicle { Name = $"{data.VehicleId}_{_vehicles.Count}" };
-            vehicle.Setup(data, Map, from, dir, _rng.RandfRange(0.15f, 0.85f), _rng);
+            // Spawn well before the next stop line, so no vehicle starts inside a red light.
+            vehicle.Setup(data, Map, Lights, from, dir, _rng.RandfRange(0.1f, 0.6f), _rng);
             if (vehicle.Position.DistanceTo(avoid) < SpawnClearance || Overlaps(vehicle))
             {
                 vehicle.Free();

@@ -5,7 +5,8 @@ namespace ShipperSimulator;
 
 /// <summary>
 /// AI road user driving on the right-hand lane of the road grid. At every intersection
-/// it goes straight or turns at random (U-turn only at the map edge). A sensor in front
+/// it goes straight or turns at random (U-turn only at the map edge). It stops at the stop
+/// line of red lights (and of yellow ones when it can still stop). A sensor in front
 /// makes it brake for the player and for vehicles going the same way.
 /// Drawn procedurally per <see cref="TrafficVehicleData.Shape"/>; faces +X like the player.
 /// </summary>
@@ -24,8 +25,11 @@ public partial class TrafficVehicle : AnimatableBody2D
     /// <summary>Movement over the last physics frame, in px/s.</summary>
     public Vector2 CurrentVelocity { get; private set; }
     public Vector2 Heading => _heading;
+    /// <summary>Waiting at a red light, or queued behind a vehicle that is. Queues never count as a jam.</summary>
+    public bool IsQueued { get; private set; }
 
     private CityMap _map = null!;
+    private TrafficLights? _lights;
     private RandomNumberGenerator _rng = null!;
     private readonly Queue<Vector2> _waypoints = new();
     private Vector2I _target;
@@ -41,10 +45,11 @@ public partial class TrafficVehicle : AnimatableBody2D
     private Area2D _sensor = null!;
 
     /// <summary>Places the vehicle on the lane between intersection <paramref name="from"/> and from + dir, <paramref name="t"/> (0..1) of the way.</summary>
-    public void Setup(TrafficVehicleData data, CityMap map, Vector2I from, Vector2I dir, float t, RandomNumberGenerator rng)
+    public void Setup(TrafficVehicleData data, CityMap map, TrafficLights? lights, Vector2I from, Vector2I dir, float t, RandomNumberGenerator rng)
     {
         Data = data;
         _map = map;
+        _lights = lights;
         _rng = rng;
         _dir = dir;
         _target = from + dir;
@@ -84,8 +89,10 @@ public partial class TrafficVehicle : AnimatableBody2D
         _hitPauseTime = Mathf.Max(0f, _hitPauseTime - dt);
         _ignoreTrafficTime = Mathf.Max(0f, _ignoreTrafficTime - dt);
 
-        var blocked = IsBlocked(out var blockedByTraffic);
-        if (blocked && blockedByTraffic)
+        var blocked = IsBlocked(out var blockedByTraffic, out var behindQueue);
+        var stopLeft = DistanceToStopLine();
+        IsQueued = behindQueue || stopLeft < 1f;
+        if (blocked && blockedByTraffic && !behindQueue)
         {
             _blockedTime += dt;
             if (_blockedTime > JamTimeout)
@@ -100,11 +107,13 @@ public partial class TrafficVehicle : AnimatableBody2D
         }
 
         var targetSpeed = blocked || _hitPauseTime > 0f ? 0f : _cruiseSpeed;
+        if (stopLeft < float.PositiveInfinity)
+            targetSpeed = Mathf.Min(targetSpeed, Mathf.Sqrt(2f * BrakeDeceleration * 0.5f * stopLeft));
         var rate = targetSpeed < _speed ? BrakeDeceleration : Acceleration;
         _speed = Mathf.MoveToward(_speed, targetSpeed, rate * dt);
 
         var before = Position;
-        Advance(_speed * dt);
+        Advance(Mathf.Min(_speed * dt, stopLeft));
         CurrentVelocity = (Position - before) / dt;
         if (CurrentVelocity.LengthSquared() > 1f)
             _heading = CurrentVelocity.Normalized();
@@ -171,6 +180,29 @@ public partial class TrafficVehicle : AnimatableBody2D
         _waypoints.Enqueue(EntryPoint(_target, next));
     }
 
+    /// <summary>
+    /// Distance left to the stop line when the light ahead says stop; +infinity when free to go
+    /// (green, no light, already past the line, or yellow too close to stop safely).
+    /// </summary>
+    private float DistanceToStopLine()
+    {
+        // One waypoint left = driving towards the entry point of the next intersection.
+        if (_lights == null || _waypoints.Count != 1)
+            return float.PositiveInfinity;
+        var signal = _lights.GetSignal(_target, _dir);
+        if (signal is TrafficLights.Signal.None or TrafficLights.Signal.Green)
+            return float.PositiveInfinity;
+
+        // The entry point is a quarter road inside the crossing; stop with the front bumper at its edge.
+        var stopGap = _map.Region.RoadWidth * 0.25f + Data.Length * 0.5f + 6f;
+        var remaining = Position.DistanceTo(_waypoints.Peek()) - stopGap;
+        if (remaining < -2f)
+            return float.PositiveInfinity;
+        if (signal == TrafficLights.Signal.Yellow && remaining < _speed * _speed / (2f * BrakeDeceleration))
+            return float.PositiveInfinity;
+        return Mathf.Max(0f, remaining);
+    }
+
     private bool IsInsideGrid(Vector2I node) =>
         node.X >= 0 && node.Y >= 0 && node.X <= _map.Region.GridSize.X && node.Y <= _map.Region.GridSize.Y;
 
@@ -203,9 +235,10 @@ public partial class TrafficVehicle : AnimatableBody2D
         AddChild(_sensor);
     }
 
-    private bool IsBlocked(out bool byTraffic)
+    private bool IsBlocked(out bool byTraffic, out bool behindQueue)
     {
         byTraffic = false;
+        behindQueue = false;
         foreach (var body in _sensor.GetOverlappingBodies())
         {
             if (body == this)
@@ -213,7 +246,16 @@ public partial class TrafficVehicle : AnimatableBody2D
             if (body is TrafficVehicle other)
             {
                 // Only queue behind vehicles going roughly the same way; crossing traffic is ignored.
-                if (_ignoreTrafficTime <= 0f && other.Heading.Dot(_heading) > 0.5f)
+                if (other.Heading.Dot(_heading) <= 0.5f)
+                    continue;
+                // A queue at a red light is never skipped; anything else is after JamTimeout.
+                if (other.IsQueued)
+                {
+                    byTraffic = true;
+                    behindQueue = true;
+                    return true;
+                }
+                if (_ignoreTrafficTime <= 0f)
                 {
                     byTraffic = true;
                     return true;

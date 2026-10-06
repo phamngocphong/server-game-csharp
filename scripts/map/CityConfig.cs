@@ -28,6 +28,8 @@ public sealed class CityTrafficConfig
     public int Count { get; set; } = -1;
     /// <summary>Relative spawn chance per vehicle id (bicycle, motorbike, car, bus...); missing ids use their default.</summary>
     public Dictionary<string, float> Weights { get; set; } = new();
+    /// <summary>Share (0-1) of inner intersections with traffic lights.</summary>
+    public float LightChance { get; set; } = 0.45f;
 }
 
 public sealed class CityGridConfig
