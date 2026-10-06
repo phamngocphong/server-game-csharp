@@ -10,8 +10,11 @@ namespace ShipperSimulator;
 /// </summary>
 public partial class SaveManager : Node
 {
-    public const string SavePath = "user://savegame.json";
-    public const int SaveVersion = 2;
+    public const string DefaultSavePath = "user://savegame.json";
+
+    /// <summary>File used by save/load. Change it for save slots or to keep tests away from the real save.</summary>
+    public string SavePath { get; set; } = DefaultSavePath;
+    public const int SaveVersion = 3;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -84,6 +87,8 @@ public partial class SaveManager : Node
     {
         // v1 -> v2: v1 had a single map and no region_id. The empty RegionId never
         // matches a city, so the old player position is dropped; wallet and stats are kept.
+        // v2 -> v3: adds reputation and total_tips. Missing values load as a new driver
+        // (five starting 5-star ratings) and 0 tips, so nothing to convert.
         data.Version = SaveVersion;
         return data;
     }

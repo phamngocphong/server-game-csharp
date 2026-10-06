@@ -13,4 +13,5 @@ RewardPerKm = 18.0
 RewardVariance = 0.15
 MinDistance = 2800.0
 MaxDistance = 6500.0
+MinRating = 4.5
 Weight = 1.0

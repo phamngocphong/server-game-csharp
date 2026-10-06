@@ -60,9 +60,17 @@ public partial class DeliveryResultPopup : Control
                 ? $"LATE  (-{GameManager.FormatMoney(result.LatePenaltyAmount)})"
                 : "On time", result.WasLate ? new Color(1f, 0.4f, 0.35f) : new Color(0.55f, 1f, 0.6f));
         }
+        if (result.Tip > 0)
+            AddRow("Tip", $"+{GameManager.FormatMoney(result.Tip)}  fast delivery!", new Color(1f, 0.85f, 0.35f));
+        else if (job.HasTip && !result.WasLate)
+            AddRow("Tip", $"none (needed {GameManager.FormatTime(job.TipTimeLimit)})", new Color(1f, 1f, 1f, 0.6f));
+        AddStarsRow("Customer rating", result.CustomerStars);
+        AddRow("Your rating", $"{GameManager.FormatRating(result.RatingBefore)} -> {GameManager.FormatRating(result.RatingAfter)}");
         AddRow("Total deliveries", result.TotalDeliveries.ToString());
 
-        _rewardLabel.Text = $"+{GameManager.FormatMoney(result.Reward)}";
+        _rewardLabel.Text = result.Tip > 0
+            ? $"+{GameManager.FormatMoney(result.Reward + result.Tip)}  (incl. {GameManager.FormatMoney(result.Tip)} tip)"
+            : $"+{GameManager.FormatMoney(result.Reward)}";
         _balanceLabel.Text = $"Balance: {GameManager.FormatMoney(result.NewBalance)}";
 
         Show();
@@ -77,6 +85,12 @@ public partial class DeliveryResultPopup : Control
         Hide();
         EventBus.Instance.EmitSignal(EventBus.SignalName.PlayerControlsLocked, false);
         EventBus.Instance.EmitSignal(EventBus.SignalName.DeliveryPopupClosed);
+    }
+
+    private void AddStarsRow(string key, int stars)
+    {
+        _detailsGrid.AddChild(new Label { Text = key, Modulate = new Color(1, 1, 1, 0.65f) });
+        _detailsGrid.AddChild(new StarRating { Value = stars, StarSize = 18f, SizeFlagsVertical = SizeFlags.ShrinkCenter });
     }
 
     private void AddRow(string key, string value, Color? valueColor = null)

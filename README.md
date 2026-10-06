@@ -56,6 +56,24 @@ Timed jobs show their limits on the Job Board card (`TIMED Pickup 0:20 - Ride 0:
 - **Pickup deadline:** if you miss it, the job **fails**. The customer cancels, you get no pay, and the board reopens with new jobs.
 - **Drop-off deadline:** if you miss it, you can still finish the job, but the reward is cut by the template's `LatePenalty` and the HUD shows `LATE +m:ss`. Set `LatePenalty = 1` to make the job fail at this deadline instead.
 - **How the limits are calculated:** `limit = BaseTime + route km × TimePerKm`, rounded up to 5 s. The pickup limit is recalculated from where you are when you press Accept.
+- **Tips:** if you deliver within `TipTimeShare` of the drop-off limit (50% by default), the customer adds a tip of `TipShare` × reward (20% for food, 25% for rides). The job card shows `Tip +$7 if done within 0:07`. The tip is a separate wallet entry, and the board shows the total in `Stats.TotalTips`.
+
+### Driver rating (1-5 stars)
+
+Every finished or failed job gets a customer rating:
+
+| Outcome | Stars |
+|---|---|
+| Delivered on time (or an untimed job) | 5 |
+| Delivered late | 3 |
+| Cancelled by you after accepting | 2 |
+| Failed (missed the pickup deadline, or a `LatePenalty = 1` job) | 1 |
+
+- **How the rating is calculated:** it is the average of the last 20 ratings (`Reputation.Window`). A new driver starts with five 5-star ratings, so one bad job drops the rating to about 4.3 rather than to 1.0. Cancelling counts against you, so you cannot dodge a missed deadline by cancelling just before it.
+- **Where it shows:** the HUD shows the stars, and the Job Board shows the counters (on time, late, failed, cancelled).
+- **A lower rating means fewer high-paying jobs:**
+  - **Pay multiplier:** every reward is multiplied by a factor from ×0.80 at 1 star to ×1.10 at 5 stars (`GameManager.GetRewardMultiplier()`).
+  - **Job types:** each `JobTemplate` has a `MinRating`. At or below that rating the job type is never offered. Between `MinRating` and 5 stars it appears proportionally less often. The defaults are Fragile Electronics 4.5 and Passenger Ride 3.5, and everything else is open to all drivers. The Job Board lists the locked and rarer types.
 
 ## Folder structure
 
@@ -69,9 +87,9 @@ scripts/
   player/      Player (motorbike controller), BikeVisual, TargetIndicator, VehicleStats
   map/         CityMap (procedural builder), CityLoader + CityConfig (JSON -> CityRegionData), Building, CityRegionData, DistrictData, DeliveryLocation
   jobs/        JobManager (state machine), JobGenerator, JobTemplate, JobData, JobMarker, DeliveryResult
-  economy/     Wallet (+ WalletEntry), PlayerStats
+  economy/     Wallet (+ WalletEntry), PlayerStats, Reputation (driver rating)
   save/        SaveData.cs: JSON save DTOs
-  ui/          MainMenu, Hud, JobBoard, JobEntry, DeliveryResultPopup
+  ui/          MainMenu, Hud, JobBoard, JobEntry, DeliveryResultPopup, StarRating (draws 0-5 stars)
 resources/
   jobs/        JobTemplate .tres files (one per job type): parcel, documents, fragile_electronics, food_delivery, passenger_ride
   vehicles/    VehicleStats .tres files
@@ -82,11 +100,11 @@ All C# code is in the `ShipperSimulator` namespace. Godot requires each script f
 
 ## Architecture
 
-- **EventBus** (`EventBus.Instance`) is the only connection between systems. It declares Godot `[Signal]`s. Listeners subscribe with C# event syntax, for example `EventBus.Instance.JobAccepted += OnJobAccepted;`. Senders call `EmitSignal(EventBus.SignalName.X, ...)`. UI scripts emit requests such as `JobAcceptRequested`, and `JobManager` emits results such as `JobStateChanged`, `JobDelivered`, `JobFailed`, `JobTimerUpdated` (every frame of a timed job) and `NavigationTargetChanged`. Nothing in the UI holds a reference to `JobManager`.
+- **EventBus** (`EventBus.Instance`) is the only connection between systems. It declares Godot `[Signal]`s. Listeners subscribe with C# event syntax, for example `EventBus.Instance.JobAccepted += OnJobAccepted;`. Senders call `EmitSignal(EventBus.SignalName.X, ...)`. UI scripts emit requests such as `JobAcceptRequested`, and `JobManager` emits results such as `JobStateChanged`, `JobDelivered`, `JobFailed`, `JobTimerUpdated` (every frame of a timed job), `JobBoardNoticeChanged` and `NavigationTargetChanged`. `GameManager` emits `BalanceChanged`, `StatsChanged` and `ReputationChanged`. Nothing in the UI holds a reference to `JobManager`.
   - Subscribe with **methods, not lambdas**, and **unsubscribe in `_ExitTree()`** with the same method (`-=`). The `EventBus` signals are declared in C#, so their C# events are plain delegates and Godot does **not** disconnect them when a node is freed. A handler you forget to remove keeps running after a scene change and throws `ObjectDisposedException`. Built-in Godot signals such as `Button.Pressed` are disconnected automatically.
 - **Scene lifecycle:** `Main._ExitTree()` calls `GameManager.UnregisterWorld()`, so autosave and play-time tracking stop when you leave the gameplay scene.
-- **GameManager** (`GameManager.Instance`) owns the global state (`Wallet`, `PlayerStats`, world references) and holds the helpers for payouts and formatting (`FormatMoney`, `FormatDistance`...). It also builds the data that goes into the save file.
-- **SaveManager** writes and reads versioned JSON through `System.Text.Json`, using the DTOs in `scripts/save/SaveData.cs` with snake_case keys. Add migrations in `Migrate()`.
+- **GameManager** (`GameManager.Instance`) owns the global state (`Wallet`, `PlayerStats`, `Reputation`, world references) and holds the helpers for payouts and formatting (`FormatMoney`, `FormatDistance`...). It also builds the data that goes into the save file.
+- **SaveManager** writes and reads versioned JSON (currently version 3) through `System.Text.Json`, using the DTOs in `scripts/save/SaveData.cs` with snake_case keys. Add migrations in `Migrate()`. The file is `SaveManager.SavePath`, which defaults to `user://savegame.json`. You can change it for save slots or for tests that must not touch the real save.
 - **Data resources** (`JobTemplate`, `VehicleStats`) are `[GlobalClass]` resources, so you can create and edit them in the inspector. In `.tres` files their properties use the C# names (PascalCase). `CityRegionData` and `DistrictData` are created at runtime by `CityLoader` from the city JSON files.
 - **Classes that never go through Godot** (`Wallet`, `PlayerStats`, `JobGenerator`, `DeliveryLocation`, `CityLoader`, the save and city DTOs) are plain C# classes that use `event Action` instead of Godot signals. `DeliveryResult` is a `RefCounted` because it is passed through a Godot signal.
 - **JobManager** runs the job state machine (`Idle → ToPickup → ToDelivery → Idle`), spawns the markers and enforces time limits.
@@ -95,7 +113,8 @@ All C# code is in the `ShipperSimulator` namespace. Godot requires each script f
 - **JobTemplate** configures each job type:
   - `Cargo` (`Package` or `Passenger`) changes the texts, the marker icon and the bike visual.
   - `CustomerNames` gives each job a named customer.
-  - The **Time limits** group holds `IsTimed`, `PickupBaseTime`, `PickupTimePerKm`, `DeliveryBaseTime`, `DeliveryTimePerKm` and `LatePenalty`.
+  - The **Time limits** group holds `IsTimed`, `PickupBaseTime`, `PickupTimePerKm`, `DeliveryBaseTime`, `DeliveryTimePerKm`, `LatePenalty`, `TipTimeShare` and `TipShare`.
+  - The **Reputation** group holds `MinRating`.
 - **JobGenerator** turns templates and the map's addresses into `JobData`. The reward is:
   `(BaseReward + km × RewardPerKm) × district multiplier × GameManager.GetRewardMultiplier() ± variance`.
 - **CityMap** builds the city from a `CityRegionData` resource. Roads, sidewalks, parks and water are drawn in `_Draw()`. Buildings, trees and water blocks are `StaticBody2D` obstacles on physics layer 2. Every side of every block gets one curbside address, so there are `4 × GridSize.X × GridSize.Y` addresses.
@@ -150,6 +169,6 @@ Create a new `.json` file in `data/cities/`. The game picks it up automatically,
 | More cities | Add a JSON file to `data/cities/` (see "Adding a city"). A city picker on the menu could pass the chosen `code` to `Main` in place of the random pick in `Main._EnterTree()`. |
 | Modded cities | Call `CityLoader.LoadAll("user://cities")` as well, so players can add JSON files without rebuilding the game. |
 | More timed jobs | Set `IsTimed = true` on any `JobTemplate` .tres. Time limits and penalties need no code. |
-| Speed bonus / tips | `DeliveryResult.DeliveryTime` and `JobData.DeliveryTimeLimit` are available. Add a bonus in `GameManager.CompleteDelivery()` for jobs finished well before the deadline. |
-| Failure stats / reputation | Listen to `EventBus.JobFailed`, then count failures in `PlayerStats` (and `StatsSaveData`). |
+| Rating rules | Star values, the window size and the pay range are constants in `Reputation`. The per-job gates are `JobTemplate.MinRating`. |
+| Rating perks | Read `GameManager.Instance.Reputation.Rating`, for example to unlock vehicles or bonus jobs, and listen to `EventBus.ReputationChanged`. |
 | Saving the active job | `JobData` only holds plain data. Add a DTO for it to `GameSaveData`. |

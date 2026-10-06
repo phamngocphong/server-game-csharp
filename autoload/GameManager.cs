@@ -22,6 +22,7 @@ public partial class GameManager : Node
 
 	public Wallet Wallet { get; } = new();
 	public PlayerStats Stats { get; } = new();
+	public Reputation Reputation { get; } = new();
 	public Player? Player { get; private set; }
 	public CityMap? CityMap { get; private set; }
 
@@ -34,6 +35,7 @@ public partial class GameManager : Node
 		ProcessMode = ProcessModeEnum.Always;
 		Wallet.BalanceChanged += OnWalletBalanceChanged;
 		Stats.Changed += OnStatsChanged;
+		Reputation.Changed += OnReputationChanged;
 	}
 
 	public override void _Process(double delta)
@@ -85,19 +87,27 @@ public partial class GameManager : Node
 	}
 
 	/// <summary>
-	/// Global reward multiplier hook. Future systems (reputation, weather,
-	/// rush hour, vehicle perks...) plug in here.
+	/// Global reward multiplier hook. The driver rating applies here; future systems
+	/// (weather, rush hour, vehicle perks...) plug in here too.
 	/// </summary>
-	public float GetRewardMultiplier(JobTemplate template) => 1f;
+	public float GetRewardMultiplier(JobTemplate template) => Reputation.RewardMultiplier;
 
-	/// <summary>Pays out a finished job (minus the late penalty) and records statistics.</summary>
+	/// <summary>
+	/// Pays out a finished job (minus the late penalty, plus a tip for a fast delivery),
+	/// records the customer's rating and statistics.
+	/// </summary>
 	public DeliveryResult CompleteDelivery(JobData job, double elapsedTime, double deliveryTime, bool late)
 	{
 		var penalty = late ? Mathf.RoundToInt(job.Reward * job.LatePenalty) : 0;
 		var reward = Mathf.Max(1, job.Reward - penalty);
+		var tip = !late && job.HasTip && deliveryTime <= job.TipTimeLimit ? job.TipAmount : 0;
 		var lateTag = late ? " (late)" : "";
 		Wallet.Add(reward, $"{job.Title}{lateTag}: {job.PickupName} -> {job.DeliveryName}");
-		Stats.RecordDelivery(reward, job.Distance);
+		Wallet.Add(tip, $"Tip: {job.Title}");
+		Stats.RecordDelivery(reward, job.Distance, tip);
+
+		var ratingBefore = Reputation.Rating;
+		var stars = Reputation.RecordDelivered(late);
 
 		var result = new DeliveryResult
 		{
@@ -105,6 +115,10 @@ public partial class GameManager : Node
 			Reward = reward,
 			WasLate = late,
 			LatePenaltyAmount = job.Reward - reward,
+			Tip = tip,
+			CustomerStars = stars,
+			RatingBefore = ratingBefore,
+			RatingAfter = Reputation.Rating,
 			DeliveryTime = deliveryTime,
 			ElapsedTime = elapsedTime,
 			NewBalance = Wallet.Balance,
@@ -113,6 +127,21 @@ public partial class GameManager : Node
 
 		SaveManager.Instance.SaveGame(silent: true);
 		return result;
+	}
+
+	/// <summary>
+	/// Records a job that ran out of time (<paramref name="cancelledByPlayer"/> = false)
+	/// or that the player cancelled, and returns a short "rating 4.8 -> 4.4" note for the toast.
+	/// </summary>
+	public string RecordJobFailure(JobData job, bool cancelledByPlayer)
+	{
+		var before = Reputation.Rating;
+		if (cancelledByPlayer)
+			Reputation.RecordCancelled();
+		else
+			Reputation.RecordFailed();
+		SaveManager.Instance.SaveGame(silent: true);
+		return $"rating {FormatRating(before)} -> {FormatRating(Reputation.Rating)}";
 	}
 
 	// --- Formatting helpers ---------------------------------------------------
@@ -131,6 +160,9 @@ public partial class GameManager : Node
 		return km.ToString("0.0", CultureInfo.InvariantCulture) + " km";
 	}
 
+	/// <summary>Rating with one decimal, e.g. "4.7".</summary>
+	public static string FormatRating(float rating) => rating.ToString("0.0", CultureInfo.InvariantCulture);
+
 	public static string FormatTime(double seconds)
 	{
 		var total = (int)seconds;
@@ -143,6 +175,7 @@ public partial class GameManager : Node
 	{
 		Wallet = Wallet.ToSaveData(),
 		Stats = Stats.ToSaveData(),
+		Reputation = Reputation.ToSaveData(),
 		RegionId = CityMap?.Region.RegionId ?? "",
 		LayoutSeed = CityMap?.ActiveSeed ?? 0,
 		Player = Player?.GetSaveData(),
@@ -152,6 +185,7 @@ public partial class GameManager : Node
 	{
 		Wallet.LoadSaveData(data.Wallet);
 		Stats.LoadSaveData(data.Stats);
+		Reputation.LoadSaveData(data.Reputation);
 		// A position is only meaningful on the same city layout; otherwise keep the spawn point.
 		var sameMap = CityMap != null && data.RegionId == CityMap.Region.RegionId && data.LayoutSeed == CityMap.ActiveSeed;
 		if (Player != null && data.Player != null && sameMap)
@@ -163,4 +197,7 @@ public partial class GameManager : Node
 
 	private void OnStatsChanged() =>
 		EventBus.Instance.EmitSignal(EventBus.SignalName.StatsChanged);
+
+	private void OnReputationChanged() =>
+		EventBus.Instance.EmitSignal(EventBus.SignalName.ReputationChanged);
 }

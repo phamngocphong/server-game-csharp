@@ -42,6 +42,10 @@ public partial class EventBus : Node
 	// --- Economy / stats ------------------------------------------------------
 	[Signal] public delegate void BalanceChangedEventHandler(int balance, int delta);
 	[Signal] public delegate void StatsChangedEventHandler();
+	/// <summary>The driver rating or the failure counters changed.</summary>
+	[Signal] public delegate void ReputationChangedEventHandler();
+	/// <summary>Text for the Job Board about job types the rating locks or makes rarer (empty = none).</summary>
+	[Signal] public delegate void JobBoardNoticeChangedEventHandler(string text);
 
 	// --- UI -------------------------------------------------------------------
 	[Signal] public delegate void JobBoardOpenRequestedEventHandler();

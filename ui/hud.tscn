@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/ui/Hud.cs" id="1_hud"]
 [ext_resource type="Theme" path="res://resources/ui/ui_theme.tres" id="2_theme"]
+[ext_resource type="Script" path="res://scripts/ui/StarRating.cs" id="3_stars"]
 
 [node name="HUD" type="Control"]
 layout_mode = 3
@@ -19,7 +20,7 @@ layout_mode = 0
 offset_left = 16.0
 offset_top = 16.0
 offset_right = 256.0
-offset_bottom = 150.0
+offset_bottom = 180.0
 mouse_filter = 2
 
 [node name="VBox" type="VBoxContainer" parent="WalletPanel"]
@@ -37,6 +38,24 @@ text = "$0"
 unique_name_in_owner = true
 layout_mode = 2
 text = "Deliveries: 0"
+
+[node name="RatingRow" type="HBoxContainer" parent="WalletPanel/VBox"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="RatingStars" type="Control" parent="WalletPanel/VBox/RatingRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(102, 18)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("3_stars")
+
+[node name="RatingLabel" type="Label" parent="WalletPanel/VBox/RatingRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.35, 1)
+text = "5.0"
 
 [node name="CityLabel" type="Label" parent="WalletPanel/VBox"]
 unique_name_in_owner = true

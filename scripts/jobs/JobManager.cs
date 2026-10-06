@@ -118,6 +118,8 @@ public partial class JobManager : Node
         _lastOrigin = origin;
         _availableJobs = _generator.GenerateJobs(origin, JobsPerBoard);
         EmitJobsUpdated();
+        Bus.EmitSignal(EventBus.SignalName.JobBoardNoticeChanged,
+            _generator.DescribeRatingLimits(GameManager.Instance.Reputation.Rating));
     }
 
     public void AcceptJob(JobData job)
@@ -148,8 +150,9 @@ public partial class JobManager : Node
         ClearMarker();
         ActiveJob = null;
         SetState(State.Idle);
+        var ratingNote = GameManager.Instance.RecordJobFailure(job, cancelledByPlayer: true);
         Bus.EmitSignal(EventBus.SignalName.JobCancelled, job);
-        Bus.EmitSignal(EventBus.SignalName.NotificationRequested, "Job cancelled");
+        Bus.EmitSignal(EventBus.SignalName.NotificationRequested, $"Job cancelled - {ratingNote}");
         RefreshJobs();
     }
 
@@ -162,8 +165,9 @@ public partial class JobManager : Node
         ClearMarker();
         ActiveJob = null;
         SetState(State.Idle);
+        var ratingNote = GameManager.Instance.RecordJobFailure(job, cancelledByPlayer: false);
         Bus.EmitSignal(EventBus.SignalName.JobFailed, job, reason);
-        Bus.EmitSignal(EventBus.SignalName.NotificationRequested, reason);
+        Bus.EmitSignal(EventBus.SignalName.NotificationRequested, $"{reason} ({ratingNote})");
         RefreshJobs();
         Bus.EmitSignal(EventBus.SignalName.JobBoardOpenRequested);
     }

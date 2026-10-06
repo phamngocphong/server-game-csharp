@@ -36,8 +36,14 @@ public partial class JobData : Resource
     [Export] public float DeliveryTimeLimit { get; set; }
     /// <summary>Share of the reward lost on a late drop-off (1 = the job fails).</summary>
     [Export] public float LatePenalty { get; set; }
+    /// <summary>Deliver within this many seconds after pickup to earn a tip; 0 = no tip.</summary>
+    [Export] public float TipTimeLimit { get; set; }
+    /// <summary>Tip as a share of <see cref="Reward"/>.</summary>
+    [Export] public float TipShare { get; set; }
 
     public bool IsTimed => DeliveryTimeLimit > 0f;
+    public bool HasTip => TipTimeLimit > 0f && TipShare > 0f;
+    public int TipAmount => HasTip ? Mathf.Max(1, Mathf.RoundToInt(Reward * TipShare)) : 0;
     public bool IsPassenger => Cargo == JobTemplate.CargoKind.Passenger;
     /// <summary>Package name plus customer, e.g. "Passenger Ride - Ms. Lan".</summary>
     public string Title => CustomerName.Length > 0 ? $"{PackageName} - {CustomerName}" : PackageName;

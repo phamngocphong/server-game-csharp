@@ -46,8 +46,29 @@ public partial class JobTemplate : Resource
     /// cuts this share of the reward; 1 = the job fails instead.
     /// </summary>
     [Export(PropertyHint.Range, "0,1,0.05")] public float LatePenalty { get; set; } = 0.5f;
+    /// <summary>Delivering within this share of the drop-off time limit earns a tip (0.5 = half the time).</summary>
+    [Export(PropertyHint.Range, "0,1,0.05")] public float TipTimeShare { get; set; } = 0.5f;
+    /// <summary>Tip as a share of the reward; 0 = no tips.</summary>
+    [Export(PropertyHint.Range, "0,1,0.05")] public float TipShare { get; set; } = 0.2f;
+
+    [ExportGroup("Reputation")]
+    /// <summary>
+    /// Driver rating this job type needs. At or below it the job is never offered; between it
+    /// and 5 stars it shows up proportionally less often. 0 = offered to everyone.
+    /// </summary>
+    [Export(PropertyHint.Range, "0,5,0.1")] public float MinRating { get; set; }
 
     [ExportGroup("Generation")]
     /// <summary>Relative chance this template is picked.</summary>
     [Export] public float Weight { get; set; } = 1f;
+
+    /// <summary>0..1 multiplier on <see cref="Weight"/> for a driver with <paramref name="rating"/> stars.</summary>
+    public float RatingFactor(float rating)
+    {
+        if (MinRating <= 0f)
+            return 1f;
+        if (MinRating >= 5f)
+            return rating >= 5f ? 1f : 0f;
+        return Mathf.Clamp((rating - MinRating) / (5f - MinRating), 0f, 1f);
+    }
 }

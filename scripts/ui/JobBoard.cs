@@ -18,6 +18,7 @@ public partial class JobBoard : Control
 
     private Control _panel = null!;
     private Label _subtitleLabel = null!;
+    private Label _noticeLabel = null!;
     private VBoxContainer _jobList = null!;
     private Label _emptyLabel = null!;
     private Button _refreshButton = null!;
@@ -30,6 +31,7 @@ public partial class JobBoard : Control
         _jobEntryScene = GD.Load<PackedScene>(JobEntryScenePath);
         _panel = GetNode<Control>("%Panel");
         _subtitleLabel = GetNode<Label>("%SubtitleLabel");
+        _noticeLabel = GetNode<Label>("%NoticeLabel");
         _jobList = GetNode<VBoxContainer>("%JobList");
         _emptyLabel = GetNode<Label>("%EmptyLabel");
         _refreshButton = GetNode<Button>("%RefreshButton");
@@ -43,6 +45,8 @@ public partial class JobBoard : Control
         bus.JobStateChanged += OnJobStateChanged;
         bus.BalanceChanged += OnBalanceChanged;
         bus.StatsChanged += RefreshHistory;
+        bus.ReputationChanged += RefreshHistory;
+        bus.JobBoardNoticeChanged += OnNoticeChanged;
         _refreshButton.Pressed += OnRefreshPressed;
         _closeButton.Pressed += Close;
 
@@ -60,6 +64,8 @@ public partial class JobBoard : Control
         bus.JobStateChanged -= OnJobStateChanged;
         bus.BalanceChanged -= OnBalanceChanged;
         bus.StatsChanged -= RefreshHistory;
+        bus.ReputationChanged -= RefreshHistory;
+        bus.JobBoardNoticeChanged -= OnNoticeChanged;
     }
 
     public override void _UnhandledInput(InputEvent @event)
@@ -131,14 +137,24 @@ public partial class JobBoard : Control
 
     private void OnBalanceChanged(int balance, int delta) => RefreshHistory();
 
+    private void OnNoticeChanged(string text)
+    {
+        _noticeLabel.Text = text;
+        _noticeLabel.Visible = text.Length > 0;
+    }
+
     private void OnRefreshPressed() => EventBus.Instance.EmitSignal(EventBus.SignalName.JobRefreshRequested);
 
     private void RefreshHistory()
     {
         var stats = GameManager.Instance.Stats;
+        var rep = GameManager.Instance.Reputation;
         _statsLabel.Text =
+            $"Rating: {GameManager.FormatRating(rep.Rating)} / 5   Pay x{rep.RewardMultiplier.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture)}\n" +
+            $"On time: {rep.TotalOnTime}   Late: {rep.TotalLate}   Failed: {rep.TotalFailed}   Cancelled: {rep.TotalCancelled}\n" +
             $"Deliveries: {stats.TotalDeliveries}   Earned: {GameManager.FormatMoney(stats.TotalEarned)}   " +
-            $"Best: {GameManager.FormatMoney(stats.BestReward)}\nPlay time: {GameManager.FormatTime(stats.PlayTime)}";
+            $"Tips: {GameManager.FormatMoney(stats.TotalTips)}\nBest: {GameManager.FormatMoney(stats.BestReward)}   " +
+            $"Play time: {GameManager.FormatTime(stats.PlayTime)}";
 
         var lines = GameManager.Instance.Wallet.History
             .Take(HistoryLines)

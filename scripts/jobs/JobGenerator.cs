@@ -69,6 +69,24 @@ public sealed class JobGenerator
         return Mathf.Ceil(seconds / 5f) * 5f;
     }
 
+    /// <summary>
+    /// One line for the Job Board about job types the driver's rating hides or makes rarer;
+    /// empty when the rating restricts nothing.
+    /// </summary>
+    public string DescribeRatingLimits(float rating)
+    {
+        var locked = _templates.Where(t => t.RatingFactor(rating) <= 0f)
+            .Select(t => $"{t.PackageName} ({GameManager.FormatRating(t.MinRating)}+)").ToList();
+        var rarer = _templates.Where(t => t.RatingFactor(rating) is > 0f and < 1f)
+            .Select(t => t.PackageName).ToList();
+        var parts = new List<string>();
+        if (locked.Count > 0)
+            parts.Add("Locked by rating: " + string.Join(", ", locked));
+        if (rarer.Count > 0)
+            parts.Add("Rarer: " + string.Join(", ", rarer));
+        return string.Join("\n", parts);
+    }
+
     public int CalculateReward(JobTemplate template, float distance, DistrictData? district)
     {
         var km = distance / GameManager.PixelsPerKm;
@@ -120,17 +138,23 @@ public sealed class JobGenerator
         return inRange.Count > 0 ? inRange[_rng.RandiRange(0, inRange.Count - 1)] : fallback;
     }
 
+    /// <summary>Weighted pick; the driver's rating scales each weight (see <see cref="JobTemplate.RatingFactor"/>).</summary>
     private JobTemplate PickTemplate()
     {
-        var total = _templates.Sum(t => Mathf.Max(t.Weight, 0f));
+        var rating = GameManager.Instance.Reputation.Rating;
+        float WeightOf(JobTemplate t) => Mathf.Max(t.Weight, 0f) * t.RatingFactor(rating);
+
+        var total = _templates.Sum(WeightOf);
+        if (total <= 0f)
+            return _templates[_rng.RandiRange(0, _templates.Count - 1)]; // every type is locked: ignore the rating
         var roll = _rng.Randf() * total;
         foreach (var t in _templates)
         {
-            roll -= Mathf.Max(t.Weight, 0f);
-            if (roll <= 0f)
+            roll -= WeightOf(t);
+            if (roll <= 0f && WeightOf(t) > 0f)
                 return t;
         }
-        return _templates[^1];
+        return _templates.Last(t => WeightOf(t) > 0f);
     }
 
     private JobData BuildJob(JobTemplate template, DeliveryLocation pickup, DeliveryLocation delivery, Vector2 origin)
@@ -164,6 +188,10 @@ public sealed class JobGenerator
             DeliveryTimeLimit = template.IsTimed
                 ? TimeLimit(template.DeliveryBaseTime, template.DeliveryTimePerKm, distance) : 0f,
             LatePenalty = template.IsTimed ? template.LatePenalty : 0f,
+            TipShare = template.IsTimed ? template.TipShare : 0f,
+            TipTimeLimit = template.IsTimed
+                ? Mathf.Floor(TimeLimit(template.DeliveryBaseTime, template.DeliveryTimePerKm, distance) * template.TipTimeShare)
+                : 0f,
         };
     }
 

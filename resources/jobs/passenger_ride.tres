@@ -21,4 +21,7 @@ PickupTimePerKm = 9.0
 DeliveryBaseTime = 15.0
 DeliveryTimePerKm = 8.0
 LatePenalty = 0.3
+TipTimeShare = 0.5
+TipShare = 0.25
+MinRating = 3.5
 Weight = 2.5

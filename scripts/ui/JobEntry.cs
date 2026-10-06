@@ -53,6 +53,8 @@ public partial class JobEntry : PanelContainer
                 : $"late: -{Mathf.RoundToInt(job.LatePenalty * 100f)}%";
             _timeLabel.Text = $"TIMED  Pickup {GameManager.FormatTime(job.PickupTimeLimit)}  -  " +
                 $"{(job.IsPassenger ? "Ride" : "Delivery")} {GameManager.FormatTime(job.DeliveryTimeLimit)}  ({lateRule})";
+            if (job.HasTip)
+                _timeLabel.Text += $"\nTip +{GameManager.FormatMoney(job.TipAmount)} if done within {GameManager.FormatTime(job.TipTimeLimit)}";
         }
     }
 

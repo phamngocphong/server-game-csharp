@@ -3,13 +3,15 @@ using Godot;
 namespace ShipperSimulator;
 
 /// <summary>
-/// Always-on HUD: wallet, current city and district, active job (with its countdown
+/// Always-on HUD: wallet, driver rating, current city and district, active job (with its countdown
 /// for timed jobs), interaction prompt, speedometer and toast notifications.
 /// </summary>
 public partial class Hud : Control
 {
     private Label _balanceLabel = null!;
     private Label _deliveriesLabel = null!;
+    private StarRating _ratingStars = null!;
+    private Label _ratingLabel = null!;
     private Label _cityLabel = null!;
     private Label _districtLabel = null!;
     private Control _activeJobPanel = null!;
@@ -33,6 +35,8 @@ public partial class Hud : Control
     {
         _balanceLabel = GetNode<Label>("%BalanceLabel");
         _deliveriesLabel = GetNode<Label>("%DeliveriesLabel");
+        _ratingStars = GetNode<StarRating>("%RatingStars");
+        _ratingLabel = GetNode<Label>("%RatingLabel");
         _cityLabel = GetNode<Label>("%CityLabel");
         _districtLabel = GetNode<Label>("%DistrictLabel");
         _activeJobPanel = GetNode<Control>("%ActiveJobPanel");
@@ -51,6 +55,7 @@ public partial class Hud : Control
         var bus = EventBus.Instance;
         bus.BalanceChanged += OnBalanceChanged;
         bus.StatsChanged += RefreshStats;
+        bus.ReputationChanged += RefreshRating;
         bus.JobStateChanged += OnJobStateChanged;
         bus.JobTimerUpdated += OnJobTimerUpdated;
         bus.NavigationTargetChanged += OnTargetChanged;
@@ -64,6 +69,7 @@ public partial class Hud : Control
         _toastPanel.Hide();
         OnBalanceChanged(GameManager.Instance.Wallet.Balance, 0);
         RefreshStats();
+        RefreshRating();
     }
 
     public override void _ExitTree()
@@ -73,6 +79,7 @@ public partial class Hud : Control
         var bus = EventBus.Instance;
         bus.BalanceChanged -= OnBalanceChanged;
         bus.StatsChanged -= RefreshStats;
+        bus.ReputationChanged -= RefreshRating;
         bus.JobStateChanged -= OnJobStateChanged;
         bus.JobTimerUpdated -= OnJobTimerUpdated;
         bus.NavigationTargetChanged -= OnTargetChanged;
@@ -120,6 +127,13 @@ public partial class Hud : Control
 
     private void RefreshStats() =>
         _deliveriesLabel.Text = $"Deliveries: {GameManager.Instance.Stats.TotalDeliveries}";
+
+    private void RefreshRating()
+    {
+        var rating = GameManager.Instance.Reputation.Rating;
+        _ratingStars.Value = rating;
+        _ratingLabel.Text = GameManager.FormatRating(rating);
+    }
 
     private void OnJobStateChanged(int state, JobData job)
     {
